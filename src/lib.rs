@@ -20,14 +20,22 @@
 
 #![no_std]
 
+mod buffer;
 mod cache;
 mod div;
 mod log;
 mod to_chars;
 mod wuint;
 
+use crate::buffer::Sealed;
 use crate::cache::EntryTypeExt as _;
-pub use crate::to_chars::to_chars;
+use core::mem::MaybeUninit;
+
+pub struct Buffer {
+    bytes: [MaybeUninit<u8>; to_chars::MAX_OUTPUT_STRING_LENGTH],
+}
+
+pub trait Float: Sealed {}
 
 // IEEE754-binary64
 const SIGNIFICAND_BITS: usize = 52;

@@ -23,7 +23,7 @@ use core::ptr;
 // sign(1) + significand(17) + decimal_point(1) + exp_marker(1) + exp_sign(1) + exp(3)
 pub(crate) const MAX_OUTPUT_STRING_LENGTH: usize = 1 + 17 + 1 + 1 + 1 + 3;
 
-pub unsafe fn to_chars(x: f64, mut buffer: *mut u8) -> *mut u8 {
+pub(crate) unsafe fn to_chars(x: f64, mut buffer: *mut u8) -> *mut u8 {
     let br = x.to_bits();
     let exponent_bits = crate::extract_exponent_bits(br);
     let s = crate::remove_exponent_bits(br, exponent_bits);
