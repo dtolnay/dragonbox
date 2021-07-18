@@ -43,6 +43,7 @@
 //! ```
 
 #![no_std]
+#![doc(html_root_url = "https://docs.rs/dragonbox/0.0.0")]
 
 mod buffer;
 mod cache;
