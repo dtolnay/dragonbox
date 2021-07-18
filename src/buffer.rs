@@ -4,12 +4,25 @@ use core::slice;
 use core::str;
 
 impl Buffer {
+    /// This is a cheap operation; you don't need to worry about reusing buffers
+    /// for efficiency.
     #[inline]
     pub fn new() -> Self {
         let bytes = [MaybeUninit::<u8>::uninit(); 24];
         Buffer { bytes }
     }
 
+    /// Print a floating point number into this buffer and return a reference to
+    /// its string representation within the buffer.
+    ///
+    /// # Special cases
+    ///
+    /// This function formats NaN as the string "NaN", positive infinity as
+    /// "inf", and negative infinity as "-inf" to match std::fmt.
+    ///
+    /// If your input is known to be finite, you may get better performance by
+    /// calling the `format_finite` method instead of `format` to avoid the
+    /// checks for special cases.
     pub fn format<F: Float>(&mut self, f: F) -> &str {
         if f.is_nonfinite() {
             f.format_nonfinite()
@@ -18,6 +31,21 @@ impl Buffer {
         }
     }
 
+    /// Print a floating point number into this buffer and return a reference to
+    /// its string representation within the buffer.
+    ///
+    /// # Special cases
+    ///
+    /// This function **does not** check for NaN or infinity. If the input
+    /// number is not a finite float, the printed representation will be some
+    /// correctly formatted but unspecified numerical value.
+    ///
+    /// Please check [`is_finite`] yourself before calling this function, or
+    /// check [`is_nan`] and [`is_infinite`] and handle those cases yourself.
+    ///
+    /// [`is_finite`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_finite
+    /// [`is_nan`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_nan
+    /// [`is_infinite`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_infinite
     #[inline]
     pub fn format_finite<F: Float>(&mut self, f: F) -> &str {
         unsafe {
