@@ -11,3 +11,6 @@ edition = "2018"
 
 [dev-dependencies]
 rand = "0.8"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
