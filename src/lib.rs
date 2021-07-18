@@ -23,9 +23,11 @@
 mod cache;
 mod div;
 mod log;
+mod to_chars;
 mod wuint;
 
 use crate::cache::EntryTypeExt as _;
+pub use crate::to_chars::to_chars;
 
 // IEEE754-binary64
 const SIGNIFICAND_BITS: usize = 52;
@@ -63,6 +65,14 @@ const fn remove_exponent_bits(u: CarrierUint, exponent_bits: u32) -> SignedSigni
 // sign bit.
 const fn remove_sign_bit_and_shift(s: SignedSignificand) -> CarrierUint {
     (s as CarrierUint) << 1
+}
+
+const fn is_nonzero(u: CarrierUint) -> bool {
+    (u << 1) != 0
+}
+
+const fn is_negative(s: SignedSignificand) -> bool {
+    s < 0
 }
 
 const fn has_even_significand_bits(s: SignedSignificand) -> bool {
@@ -130,9 +140,9 @@ fn divide_by_pow10<const N: u32, const MAX_POW2: i32, const MAX_POW5: i32>(n: u6
     }
 }
 
-pub struct Decimal {
-    pub significand: u64,
-    pub exponent: i32,
+struct Decimal {
+    significand: u64,
+    exponent: i32,
 }
 
 const KAPPA: u32 = 2;
@@ -414,7 +424,7 @@ fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
         && exponent <= CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD
 }
 
-pub fn to_decimal(x: f64) -> Decimal {
+fn to_decimal(x: f64) -> Decimal {
     let br = x.to_bits();
     let exponent_bits = extract_exponent_bits(br);
     let signed_significand_bits = remove_exponent_bits(br, exponent_bits);
