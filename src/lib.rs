@@ -44,6 +44,13 @@
 
 #![no_std]
 #![doc(html_root_url = "https://docs.rs/dragonbox/0.0.0")]
+#![allow(
+    clippy::comparison_chain,
+    clippy::manual_range_contains,
+    clippy::never_loop,
+    clippy::toplevel_ref_arg,
+    clippy::unusual_byte_groupings
+)]
 
 mod buffer;
 mod cache;
