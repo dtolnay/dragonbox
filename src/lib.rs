@@ -45,10 +45,24 @@
 #![no_std]
 #![doc(html_root_url = "https://docs.rs/dragonbox/0.0.0")]
 #![allow(
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
     clippy::comparison_chain,
+    clippy::doc_markdown,
+    clippy::expl_impl_clone_on_copy,
+    clippy::if_not_else,
+    clippy::items_after_statements,
     clippy::manual_range_contains,
+    clippy::must_use_candidate,
     clippy::never_loop,
+    clippy::ptr_as_ptr,
+    clippy::shadow_unrelated,
+    clippy::similar_names,
+    clippy::too_many_lines,
     clippy::toplevel_ref_arg,
+    clippy::unreadable_literal,
     clippy::unusual_byte_groupings
 )]
 
