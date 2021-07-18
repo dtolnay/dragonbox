@@ -20,3 +20,13 @@ jobs:
           toolchain: ${{matrix.rust}}
       - run: cargo test --release
       - run: cargo test
+
+  miri:
+    name: Miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - run: cargo miri test
