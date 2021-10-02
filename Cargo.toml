@@ -8,6 +8,7 @@ repository = "https://github.com/dtolnay/dragonbox"
 documentation = "https://docs.rs/dragonbox"
 readme = "README.md"
 edition = "2018"
+rust-version = "1.51"
 
 [dev-dependencies]
 rand = "0.8"
