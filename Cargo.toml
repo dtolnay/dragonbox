@@ -8,6 +8,7 @@ repository = "https://github.com/dtolnay/dragonbox"
 documentation = "https://docs.rs/dragonbox"
 categories = ["value-formatting"]
 readme = "README.md"
+exclude = ["performance.png", "chart/**"]
 edition = "2018"
 rust-version = "1.51"
 
