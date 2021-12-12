@@ -41,6 +41,10 @@
 //!     assert_eq!(printed, "1.234E0");
 //! }
 //! ```
+//!
+//! ## Performance (lower is better)
+//!
+//! ![performance](https://raw.githubusercontent.com/dtolnay/dragonbox/master/performance.png)
 
 #![no_std]
 #![doc(html_root_url = "https://docs.rs/dragonbox/0.1.1")]

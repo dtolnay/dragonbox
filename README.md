@@ -11,6 +11,8 @@ Rust for benchmarking purposes.
 Please see the upstream repo for an explanation of the approach and comparison
 to the Ryū algorithm.
 
+<br>
+
 ## Example
 
 ```rust
@@ -20,6 +22,12 @@ fn main() {
     assert_eq!(printed, "1.234E0");
 }
 ```
+
+<br>
+
+## Performance (lower is better)
+
+![performance](https://raw.githubusercontent.com/dtolnay/dragonbox/master/performance.png)
 
 <br>
 
