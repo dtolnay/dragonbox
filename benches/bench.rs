@@ -1,4 +1,5 @@
 #![feature(test)]
+#![allow(clippy::approx_constant, clippy::unreadable_literal)]
 
 extern crate test;
 
