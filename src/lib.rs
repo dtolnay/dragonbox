@@ -47,7 +47,7 @@
 //! ![performance](https://raw.githubusercontent.com/dtolnay/dragonbox/master/performance.png)
 
 #![no_std]
-#![doc(html_root_url = "https://docs.rs/dragonbox/0.1.2")]
+#![doc(html_root_url = "https://docs.rs/dragonbox/0.1.3")]
 #![allow(
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
