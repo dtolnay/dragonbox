@@ -49,6 +49,7 @@
 #![no_std]
 #![doc(html_root_url = "https://docs.rs/dragonbox/0.1.3")]
 #![allow(
+    clippy::bool_to_int_with_if,
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
