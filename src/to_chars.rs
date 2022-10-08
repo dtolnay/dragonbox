@@ -115,8 +115,8 @@ fn fast_div<const DIVISOR: u32, const MAX_PRECISION: u32, const ADDITIONAL_PRECI
     debug_assert!(MAX_PRECISION > 0 && MAX_PRECISION <= 32);
     debug_assert!(n < (1 << MAX_PRECISION));
 
-    let left_end = (((1 << (MAX_PRECISION + ADDITIONAL_PRECISION)) + DIVISOR - 1) / DIVISOR) as u32;
-    let right_end = (((1 << ADDITIONAL_PRECISION) * ((1 << MAX_PRECISION) + 1)) / DIVISOR) as u32;
+    let left_end = ((1u32 << (MAX_PRECISION + ADDITIONAL_PRECISION)) + DIVISOR - 1) / DIVISOR;
+    let right_end = ((1u32 << ADDITIONAL_PRECISION) * ((1 << MAX_PRECISION) + 1)) / DIVISOR;
 
     // Ensures sufficient precision.
     debug_assert!(left_end <= right_end);

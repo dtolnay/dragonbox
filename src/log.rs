@@ -48,7 +48,7 @@ const fn compute<
     //debug_assert!(e <= MAX_EXPONENT && e >= -MAX_EXPONENT);
     let c = floor_shift(C_INTEGER_PART, C_FRACTIONAL_DIGITS, SHIFT_AMOUNT);
     let s = floor_shift(S_INTEGER_PART, S_FRACTIONAL_DIGITS, SHIFT_AMOUNT);
-    ((e * c - s) >> SHIFT_AMOUNT) as i32
+    (e * c - s) >> SHIFT_AMOUNT
 }
 
 const LOG10_2_FRACTIONAL_DIGITS: u64 = 0x4d10_4d42_7de7_fbcc;
