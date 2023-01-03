@@ -15,5 +15,8 @@ rust-version = "1.51"
 [dev-dependencies]
 rand = "0.8"
 
+[lib]
+doc-scrape-examples = false
+
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
