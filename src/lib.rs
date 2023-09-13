@@ -61,6 +61,7 @@
     clippy::items_after_statements,
     clippy::manual_range_contains,
     clippy::must_use_candidate,
+    clippy::needless_doctest_main,
     clippy::never_loop,
     clippy::ptr_as_ptr,
     clippy::shadow_unrelated,
