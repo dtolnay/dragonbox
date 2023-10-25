@@ -81,7 +81,8 @@ fn test_basic() {
     check!(-0E0);
     check!(1E0);
     check!(-1E0);
-    assert_eq!(to_chars(f64::NAN), "NaN");
+    assert_eq!(to_chars(f64::NAN.copysign(1.0)), "NaN");
+    assert_eq!(to_chars(f64::NAN.copysign(-1.0)), "NaN");
     assert_eq!(to_chars(f64::INFINITY), "inf");
     assert_eq!(to_chars(f64::NEG_INFINITY), "-inf");
 }
