@@ -1,6 +1,6 @@
 [package]
 name = "dragonbox"
-version = "0.1.7" # don't forget to update html_root_url
+version = "0.1.8" # don't forget to update html_root_url
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 categories = ["value-formatting", "no-std", "no-std::no-alloc"]
 description = "Fast floating point to string conversion"
