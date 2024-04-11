@@ -514,7 +514,7 @@ fn to_decimal(x: f64) -> Decimal {
 
         // Shorter interval case; proceed like Schubfach. One might think this
         // condition is wrong, since when exponent_bits == 1 and two_fc == 0,
-        // the interval is actullay regular. However, it turns out that this
+        // the interval is actually regular. However, it turns out that this
         // seemingly wrong condition is actually fine, because the end result is
         // anyway the same.
         //
