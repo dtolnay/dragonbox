@@ -1,6 +1,6 @@
 [package]
 name = "dragonbox"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 categories = ["value-formatting", "no-std", "no-std::no-alloc"]
 description = "Fast floating point to string conversion"
