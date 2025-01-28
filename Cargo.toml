@@ -13,7 +13,7 @@ repository = "https://github.com/dtolnay/dragonbox"
 rust-version = "1.52"
 
 [dev-dependencies]
-rand = "0.8"
+rand = "0.9"
 
 [lib]
 doc-scrape-examples = false
