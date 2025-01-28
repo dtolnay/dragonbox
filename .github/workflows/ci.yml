@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.52.0
-      - run: cargo check
+      - run: cargo check --manifest-path tests/crate/Cargo.toml
 
   doc:
     name: Documentation
