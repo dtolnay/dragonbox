@@ -115,10 +115,6 @@ const EXPONENT_BIAS: i32 = -1023;
 // Most of the operations will be done on this integer type.
 type CarrierUint = u64;
 
-// Defines a signed integer type for holding significand bits together with the
-// sign bit.
-type SignedSignificand = i64;
-
 // Number of bits in the above unsigned integer type.
 const CARRIER_BITS: usize = 64;
 
@@ -132,25 +128,30 @@ const fn extract_exponent_bits(u: CarrierUint) -> u32 {
 
 // Remove the exponent bits and extract significand bits together with the sign
 // bit.
-const fn remove_exponent_bits(u: CarrierUint, exponent_bits: u32) -> SignedSignificand {
-    (u ^ ((exponent_bits as CarrierUint) << SIGNIFICAND_BITS)) as SignedSignificand
+const fn remove_exponent_bits(u: CarrierUint, exponent_bits: u32) -> CarrierUint {
+    u ^ ((exponent_bits as CarrierUint) << SIGNIFICAND_BITS)
 }
 
 // Shift the obtained signed significand bits to the left by 1 to remove the
 // sign bit.
-const fn remove_sign_bit_and_shift(s: SignedSignificand) -> CarrierUint {
-    (s as CarrierUint) << 1
+const fn remove_sign_bit_and_shift(u: CarrierUint) -> CarrierUint {
+    u << 1
 }
 
 const fn is_nonzero(u: CarrierUint) -> bool {
     (u << 1) != 0
 }
 
-const fn is_negative(s: SignedSignificand) -> bool {
-    s < 0
+const fn is_positive(u: CarrierUint) -> bool {
+    const SIGN_BIT: CarrierUint = 1 << (SIGNIFICAND_BITS + EXPONENT_BITS);
+    u < SIGN_BIT
 }
 
-const fn has_even_significand_bits(s: SignedSignificand) -> bool {
+const fn is_negative(u: CarrierUint) -> bool {
+    !is_positive(u)
+}
+
+const fn has_even_significand_bits(s: CarrierUint) -> bool {
     s % 2 == 0
 }
 
@@ -548,6 +549,6 @@ fn to_decimal(x: f64) -> Decimal {
     compute_nearest_normal(
         two_fc,
         exponent,
-        has_even_significand_bits(signed_significand_bits),
+        has_even_significand_bits(signed_significand_bits as CarrierUint),
     )
 }
