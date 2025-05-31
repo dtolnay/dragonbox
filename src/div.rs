@@ -33,33 +33,36 @@ const fn modular_inverse<const A: CarrierUint>() -> CarrierUint {
     mod_inverse
 }
 
-struct Table<const A: CarrierUint, const N: usize> {
-    //assert(a % 2 != 0);
-    //assert(N > 0);
-    mod_inv: [CarrierUint; N],
-    max_quotients: [CarrierUint; N],
+struct DivisibilityCheck<const A: CarrierUint, const N: usize>;
+
+#[derive(Copy, Clone)]
+struct Entry {
+    mod_inv: CarrierUint,
+    max_quotients: CarrierUint,
 }
 
-impl<const A: CarrierUint, const N: usize> Table<A, N> {
-    const TABLE: Self = {
+impl<const A: CarrierUint, const N: usize> DivisibilityCheck<A, N> {
+    const TABLE: [Entry; N] = {
+        assert!(A % 2 != 0);
+        assert!(N > 0);
+
         let mod_inverse = modular_inverse::<A>();
-        let mut mod_inv = [0; N];
-        let mut max_quotients = [0; N];
+        let mut table = [Entry {
+            mod_inv: 0,
+            max_quotients: 0,
+        }; N];
         let mut pow_of_mod_inverse: CarrierUint = 1;
         let mut pow_of_a = 1;
         let mut i = 0;
         while i < N {
-            mod_inv[i] = pow_of_mod_inverse;
-            max_quotients[i] = CarrierUint::MAX / pow_of_a;
+            table[i].mod_inv = pow_of_mod_inverse;
+            table[i].max_quotients = CarrierUint::MAX / pow_of_a;
 
             pow_of_mod_inverse = pow_of_mod_inverse.wrapping_mul(mod_inverse);
             pow_of_a *= A;
             i += 1;
         }
-        Table {
-            mod_inv,
-            max_quotients,
-        }
+        table
     };
 }
 
@@ -67,10 +70,10 @@ pub(crate) unsafe fn divisible_by_power_of_5<const TABLE_SIZE: usize>(
     x: CarrierUint,
     exp: u32,
 ) -> bool {
-    let table = &Table::<5, TABLE_SIZE>::TABLE;
+    let divtable = &DivisibilityCheck::<5, TABLE_SIZE>::TABLE;
     debug_assert!((exp as usize) < TABLE_SIZE);
-    x.wrapping_mul(*table.mod_inv.get_unchecked(exp as usize))
-        <= *table.max_quotients.get_unchecked(exp as usize)
+    x.wrapping_mul(divtable.get_unchecked(exp as usize).mod_inv)
+        <= divtable.get_unchecked(exp as usize).max_quotients
 }
 
 pub(crate) fn divisible_by_power_of_2(x: CarrierUint, exp: u32) -> bool {
