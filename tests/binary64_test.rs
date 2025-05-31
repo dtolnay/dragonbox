@@ -102,7 +102,7 @@ fn test_min_and_max() {
 
 #[test]
 fn test_lots_of_trailing_zeros() {
-    check!(2.9802322387695313E-8);
+    check!(2.9802322387695312E-8);
 }
 
 #[test]
@@ -213,8 +213,8 @@ fn test_min_max_shift() {
     // 32-bit opt-size=1:  51 <= dist <= 59
     // 64-bit opt-size=0:  52 <= dist <= 52
     // 64-bit opt-size=1:  52 <= dist <= 59
-    assert_eq!(2.9008355198595578E-216, ieee_parts_to_double(false, 307, 0));
-    check!(2.9008355198595578E-216);
+    assert_eq!(2.900835519859558E-216, ieee_parts_to_double(false, 307, 0));
+    check!(2.900835519859558E-216);
     // 32-bit opt-size=0:  51 <= dist <= 51
     // 32-bit opt-size=1:  51 <= dist <= 59
     // 64-bit opt-size=0:  52 <= dist <= 52
@@ -327,4 +327,14 @@ fn test_small_integers() {
     check!(6.8719476736E13);
     check!(5.49755813888E14);
     check!(8.796093022208E15);
+}
+
+#[test]
+fn test_issue_3() {
+    assert_eq!(to_chars(1.0902420340782359E+57), "1.0902420340782359E57");
+    assert_eq!(to_chars(5.3461812015486243E+26), "5.346181201548624E26");
+    assert_eq!(to_chars(2.8674588045599296E+66), "2.8674588045599296E66");
+    assert_eq!(to_chars(1.2182856909681335E+77), "1.2182856909681335E77");
+    assert_eq!(to_chars(2.0596292913323055E+69), "2.0596292913323055E69");
+    assert_eq!(to_chars(1.3331169462028886E+60), "1.3331169462028886E60");
 }

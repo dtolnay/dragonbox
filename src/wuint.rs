@@ -25,14 +25,18 @@ pub(crate) fn umul128_upper64(x: u64, y: u64) -> u64 {
     (p >> 64) as u64
 }
 
-pub(crate) fn umul192_upper64(x: u64, y: u128) -> u64 {
-    let mut g0 = x as u128 * y.high() as u128;
-    g0 += umul128_upper64(x, y.low()) as u128;
-    g0.high()
+// Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit unsigned integer.
+pub(crate) fn umul192_upper128(x: u64, y: u128) -> u128 {
+    let mut r = (x as u128) * (y.high() as u128);
+    r += umul128_upper64(x, y.low()) as u128;
+    r
 }
 
-pub(crate) fn umul192_middle64(x: u64, y: u128) -> u64 {
-    let g01 = x.wrapping_mul(y.high());
-    let g10 = umul128_upper64(x, y.low());
-    g01.wrapping_add(g10)
+// Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit unsigned integer.
+pub(crate) fn umul192_lower128(x: u64, y: u128) -> u128 {
+    let high = (x as u128) * (y.high() as u128);
+    let high_low = (x as u128) * (y.low() as u128);
+    let new_high = ((high + (high_low >> 64)) & 0xffffffffffffffff) as u64;
+    let new_low = high_low as u64;
+    ((new_high as u128) << 64) | (new_low as u128)
 }
