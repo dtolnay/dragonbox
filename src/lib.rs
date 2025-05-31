@@ -187,14 +187,6 @@ const fn count_factors<const A: usize>(mut n: usize) -> u32 {
     c
 }
 
-fn break_rounding_tie(significand: &mut u64) {
-    *significand = if *significand % 2 == 0 {
-        *significand
-    } else {
-        *significand - 1
-    };
-}
-
 // Compute floor(n / 10^N) for small N.
 // Precondition: n <= 2^a * 5^b (a = max_pow2, b = max_pow5)
 fn divide_by_pow10<const N: u32, const MAX_POW2: i32, const MAX_POW5: i32>(n: u64) -> u64 {
@@ -223,11 +215,11 @@ struct Decimal {
 
 const KAPPA: u32 = 2;
 
-// The main algorithm assumes the input is a normal/subnormal finite number
-fn compute_nearest_normal(
+fn compute_normal_interval_case(
     two_fc: CarrierUint,
     exponent: i32,
-    has_even_significand_bits: bool,
+    include_left_endpoint: bool,
+    include_right_endpoint: bool,
 ) -> Decimal {
     //////////////////////////////////////////////////////////////////////
     // Step 1: Schubfach multiplier calculation
@@ -242,7 +234,8 @@ fn compute_nearest_normal(
     // 10^kappa <= deltai < 10^(kappa + 1)
     let deltai = compute_delta(cache, beta_minus_1);
     let two_fr = two_fc | 1;
-    let zi = compute_mul(two_fr << beta_minus_1, cache);
+    let z_result = compute_mul_with_parity(two_fr << beta_minus_1, cache);
+    let zi = z_result.integer_part;
 
     //////////////////////////////////////////////////////////////////////
     // Step 2: Try larger divisor; remove trailing zeros if necessary
@@ -260,37 +253,26 @@ fn compute_nearest_normal(
     >(zi);
     let mut r = (zi - BIG_DIVISOR as u64 * significand) as u32;
 
-    'small_divisor_case_label: loop {
-        if r > deltai {
-            break 'small_divisor_case_label;
-        } else if r < deltai {
+    loop {
+        if r < deltai {
             // Exclude the right endpoint if necessary.
-            if r == 0
-                && !has_even_significand_bits
-                && is_product_integer_fc_pm_half(two_fr, exponent, minus_k)
-            {
+            if r == 0 && !z_result.is_integer && !include_right_endpoint {
                 significand -= 1;
                 r = BIG_DIVISOR;
-                break 'small_divisor_case_label;
+                break;
             }
+        } else if r > deltai {
+            break;
         } else {
             // r == deltai; compare fractional parts.
-            // Check conditions in the order different from the paper to take
-            // advantage of short-circuiting.
-            let two_fl = two_fc - 1;
-            if (!has_even_significand_bits
-                || !is_product_integer_fc_pm_half(two_fl, exponent, minus_k))
-                && !compute_mul_parity(two_fl, cache, beta_minus_1)
-            {
-                break 'small_divisor_case_label;
+            let x_result = compute_mul_parity_only(two_fc - 1, cache, beta_minus_1);
+
+            if !(x_result.parity || (x_result.is_integer && include_left_endpoint)) {
+                break;
             }
         }
-        let exponent = minus_k + KAPPA as i32 + 1;
 
-        return Decimal {
-            significand,
-            exponent,
-        };
+        return may_have_trailing_zeros(significand, minus_k + KAPPA as i32 + 1);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -298,40 +280,39 @@ fn compute_nearest_normal(
     //////////////////////////////////////////////////////////////////////
 
     significand *= 10;
-    let exponent = minus_k + KAPPA as i32;
 
+    // Compute the decimal significand and handle rounding
     let mut dist = r - (deltai / 2) + (SMALL_DIVISOR / 2);
     let approx_y_parity = ((dist ^ (SMALL_DIVISOR / 2)) & 1) != 0;
 
     // Is dist divisible by 10^kappa?
-    let divisible_by_10_to_the_kappa = div::check_divisibility_and_divide_by_pow10(&mut dist);
+
+    let divisible_by_small_divisor = div::check_divisibility_and_divide_by_pow10(&mut dist);
 
     // Add dist / 10^kappa to the significand.
     significand += dist as CarrierUint;
 
-    if divisible_by_10_to_the_kappa {
+    if divisible_by_small_divisor {
         // Check z^(f) >= epsilon^(f)
         // We have either yi == zi - epsiloni or yi == (zi - epsiloni) - 1,
         // where yi == zi - epsiloni if and only if z^(f) >= epsilon^(f)
         // Since there are only 2 possibilities, we only need to care about the parity.
         // Also, zi and r should have the same parity since the divisor
         // is an even number.
-        if compute_mul_parity(two_fc, cache, beta_minus_1) != approx_y_parity {
+        let y_result = compute_mul_parity_only(two_fc, cache, beta_minus_1);
+        if y_result.parity != approx_y_parity {
             significand -= 1;
         } else {
             // If z^(f) >= epsilon^(f), we might have a tie
             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
             // For tie-to-up case, we can just choose the upper one.
-            if is_product_integer_fc(two_fc, exponent, minus_k) {
-                break_rounding_tie(&mut significand);
+            if prefer_round_down(significand) && y_result.is_integer {
+                significand -= 1;
             }
         }
     }
 
-    Decimal {
-        significand,
-        exponent,
-    }
+    no_trailing_zeros(significand, minus_k + KAPPA as i32)
 }
 
 fn compute_nearest_shorter(exponent: i32) -> Decimal {
@@ -351,19 +332,15 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     }
 
     // Try bigger divisor.
-    let significand = zi / 10;
+    let mut significand = zi / 10;
 
     // If succeed, remove trailing zeros if necessary and return.
     if significand * 10 >= xi {
-        return Decimal {
-            significand,
-            exponent: minus_k + 1,
-        };
+        return may_have_trailing_zeros(significand, minus_k + 1);
     }
 
     // Otherwise, compute the round-up of y.
-    let mut significand = compute_round_up_for_shorter_interval_case(cache, beta_minus_1);
-    let exponent = minus_k;
+    significand = compute_round_up_for_shorter_interval_case(cache, beta_minus_1);
 
     // When tie occurs, choose one of them according to the rule.
     const SHORTER_INTERVAL_TIE_LOWER_THRESHOLD: i32 =
@@ -372,33 +349,46 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
             - SIGNIFICAND_BITS as i32;
     const SHORTER_INTERVAL_TIE_UPPER_THRESHOLD: i32 =
         -log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2) - 2 - SIGNIFICAND_BITS as i32;
-    if exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
+
+    if prefer_round_down(significand)
+        && exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
         && exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
     {
-        break_rounding_tie(&mut significand);
+        significand -= 1;
     } else if significand < xi {
         significand += 1;
     }
 
-    Decimal {
-        significand,
-        exponent,
-    }
+    no_trailing_zeros(significand, minus_k)
 }
 
-fn compute_mul(u: CarrierUint, cache: &cache::EntryType) -> CarrierUint {
-    wuint::umul192_upper64(u, *cache)
+fn compute_mul_with_parity(u: CarrierUint, cache: &cache::EntryType) -> MultiplyResult {
+    let r = wuint::umul192_upper128(u, *cache);
+    let integer_part = (r >> 64) as u64;
+    let is_integer = (r as u64) == 0;
+    MultiplyResult {
+        integer_part,
+        is_integer,
+    }
 }
 
 fn compute_delta(cache: &cache::EntryType, beta_minus_1: i32) -> u32 {
     (cache.high() >> ((CARRIER_BITS - 1) as i32 - beta_minus_1)) as u32
 }
 
-fn compute_mul_parity(two_f: CarrierUint, cache: &cache::EntryType, beta_minus_1: i32) -> bool {
+fn compute_mul_parity_only(
+    two_f: CarrierUint,
+    cache: &cache::EntryType,
+    beta_minus_1: i32,
+) -> ParityResult {
     debug_assert!(beta_minus_1 >= 1);
     debug_assert!(beta_minus_1 < 64);
-
-    ((wuint::umul192_middle64(two_f, *cache) >> (64 - beta_minus_1)) & 1) != 0
+    let r = wuint::umul192_lower128(two_f, *cache);
+    let r_high = (r >> 64) as u64;
+    let r_low = r as u64;
+    let parity = ((r_high >> (64 - beta_minus_1)) & 1) != 0;
+    let is_integer = ((r_high << beta_minus_1) | (r_low >> (64 - beta_minus_1))) == 0;
+    ParityResult { parity, is_integer }
 }
 
 fn compute_left_endpoint_for_shorter_interval_case(
@@ -424,64 +414,6 @@ fn compute_round_up_for_shorter_interval_case(
     ((cache.high() >> ((CARRIER_BITS - SIGNIFICAND_BITS - 2) as i32 - beta_minus_1)) + 1) / 2
 }
 
-const MAX_POWER_OF_FACTOR_OF_5: i32 = log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2);
-const DIVISIBILITY_CHECK_BY_5_THRESHOLD: i32 =
-    log::floor_log2_pow10(MAX_POWER_OF_FACTOR_OF_5 + KAPPA as i32 + 1);
-
-fn is_product_integer_fc_pm_half(two_f: CarrierUint, exponent: i32, minus_k: i32) -> bool {
-    const CASE_FC_PM_HALF_LOWER_THRESHOLD: i32 =
-        -(KAPPA as i32) - log::floor_log5_pow2(KAPPA as i32);
-    const CASE_FC_PM_HALF_UPPER_THRESHOLD: i32 = log::floor_log2_pow10(KAPPA as i32 + 1);
-
-    // Case I: f = fc +- 1/2
-    if exponent < CASE_FC_PM_HALF_LOWER_THRESHOLD {
-        false
-    }
-    // For k >= 0
-    else if exponent <= CASE_FC_PM_HALF_UPPER_THRESHOLD {
-        true
-    }
-    // For k < 0
-    else if exponent > DIVISIBILITY_CHECK_BY_5_THRESHOLD {
-        false
-    } else {
-        unsafe {
-            div::divisible_by_power_of_5::<{ MAX_POWER_OF_FACTOR_OF_5 as usize + 1 }>(
-                two_f,
-                minus_k as u32,
-            )
-        }
-    }
-}
-
-fn is_product_integer_fc(two_f: CarrierUint, exponent: i32, minus_k: i32) -> bool {
-    const CASE_FC_LOWER_THRESHOLD: i32 =
-        -(KAPPA as i32) - 1 - log::floor_log5_pow2(KAPPA as i32 + 1);
-    const CASE_FC_UPPER_THRESHOLD: i32 = log::floor_log2_pow10(KAPPA as i32 + 1);
-
-    // Case II: f = fc + 1
-    // Case III: f = fc
-    // Exponent for 5 is negative
-    if exponent > DIVISIBILITY_CHECK_BY_5_THRESHOLD {
-        false
-    } else if exponent > CASE_FC_UPPER_THRESHOLD {
-        unsafe {
-            div::divisible_by_power_of_5::<{ MAX_POWER_OF_FACTOR_OF_5 as usize + 1 }>(
-                two_f,
-                minus_k as u32,
-            )
-        }
-    }
-    // Both exponents are nonnegative
-    else if exponent >= CASE_FC_LOWER_THRESHOLD {
-        true
-    }
-    // Exponent for 2 is negative
-    else {
-        div::divisible_by_power_of_2(two_f, (minus_k - exponent + 1) as u32)
-    }
-}
-
 const fn floor_log2(mut n: u64) -> i32 {
     let mut count = -1;
     while n != 0 {
@@ -491,6 +423,12 @@ const fn floor_log2(mut n: u64) -> i32 {
     count
 }
 
+#[inline(always)]
+fn prefer_round_down(decimal_significand: u64) -> bool {
+    // For simplicity, implement to_even strategy
+    decimal_significand % 2 != 0
+}
+
 fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
     const CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD: i32 = 2;
     const CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD: i32 = 2 + floor_log2(
@@ -498,6 +436,53 @@ fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
     );
     exponent >= CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD
         && exponent <= CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD
+}
+
+const fn rotr64(n: u64, r: u32) -> u64 {
+    let r = r & 63;
+    (n >> r) | (n << ((64 - r) & 63))
+}
+
+fn may_have_trailing_zeros(mut significand: u64, mut exponent: i32) -> Decimal {
+    // Port of the C++ remove_trailing_zeros algorithm for 64-bit
+    // See https://github.com/jk-jeon/rtz_benchmark.
+    // The idea of branchless search below is by reddit users r/pigeon768 and
+    // r/TheoreticalDumbass.
+
+    let mut r = rotr64(significand.wrapping_mul(28999941890838049), 8);
+    let mut b = r < 184467440738;
+    let mut s = b as i32;
+    significand = if b { r } else { significand };
+
+    r = rotr64(significand.wrapping_mul(182622766329724561), 4);
+    b = r < 1844674407370956;
+    s = s * 2 + (b as i32);
+    significand = if b { r } else { significand };
+
+    r = rotr64(significand.wrapping_mul(10330176681277348905), 2);
+    b = r < 184467440737095517;
+    s = s * 2 + (b as i32);
+    significand = if b { r } else { significand };
+
+    r = rotr64(significand.wrapping_mul(14757395258967641293), 1);
+    b = r < 1844674407370955162;
+    s = s * 2 + (b as i32);
+    significand = if b { r } else { significand };
+
+    exponent += s;
+
+    Decimal {
+        significand,
+        exponent,
+    }
+}
+
+#[inline(always)]
+fn no_trailing_zeros(significand: u64, exponent: i32) -> Decimal {
+    Decimal {
+        significand,
+        exponent,
+    }
 }
 
 fn to_decimal(x: f64) -> Decimal {
@@ -519,10 +504,10 @@ fn to_decimal(x: f64) -> Decimal {
         // anyway the same.
         //
         // [binary32]
-        // floor( (fc-1/2) * 2^e ) = 1.175'494'28... * 10^-38
-        // floor( (fc-1/4) * 2^e ) = 1.175'494'31... * 10^-38
-        // floor(    fc    * 2^e ) = 1.175'494'35... * 10^-38
-        // floor( (fc+1/2) * 2^e ) = 1.175'494'42... * 10^-38
+        // (fc-1/2) * 2^e = 1.175'494'28... * 10^-38
+        // (fc-1/4) * 2^e = 1.175'494'31... * 10^-38
+        //    fc    * 2^e = 1.175'494'35... * 10^-38
+        // (fc+1/2) * 2^e = 1.175'494'42... * 10^-38
         //
         // Hence, shorter_interval_case will return 1.175'494'4 * 10^-38.
         // 1.175'494'3 * 10^-38 is also a correct shortest representation that
@@ -530,10 +515,10 @@ fn to_decimal(x: f64) -> Decimal {
         // 10^-38 is closer to the true value so it doesn't matter.
         //
         // [binary64]
-        // floor( (fc-1/2) * 2^e ) = 2.225'073'858'507'201'13... * 10^-308
-        // floor( (fc-1/4) * 2^e ) = 2.225'073'858'507'201'25... * 10^-308
-        // floor(    fc    * 2^e ) = 2.225'073'858'507'201'38... * 10^-308
-        // floor( (fc+1/2) * 2^e ) = 2.225'073'858'507'201'63... * 10^-308
+        // (fc-1/2) * 2^e = 2.225'073'858'507'201'13... * 10^-308
+        // (fc-1/4) * 2^e = 2.225'073'858'507'201'25... * 10^-308
+        //    fc    * 2^e = 2.225'073'858'507'201'38... * 10^-308
+        // (fc+1/2) * 2^e = 2.225'073'858'507'201'63... * 10^-308
         //
         // Hence, shorter_interval_case will return 2.225'073'858'507'201'4 * 10^-308.
         // This is indeed of the shortest length, and it is the unique one
@@ -550,9 +535,16 @@ fn to_decimal(x: f64) -> Decimal {
         exponent = MIN_EXPONENT - SIGNIFICAND_BITS as i32;
     }
 
-    compute_nearest_normal(
-        two_fc,
-        exponent,
-        has_even_significand_bits(signed_significand_bits),
-    )
+    let even = has_even_significand_bits(signed_significand_bits);
+    compute_normal_interval_case(two_fc, exponent, even, even)
+}
+
+struct MultiplyResult {
+    integer_part: u64,
+    is_integer: bool,
+}
+
+struct ParityResult {
+    parity: bool,
+    is_integer: bool,
 }
