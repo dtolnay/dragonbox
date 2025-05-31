@@ -403,7 +403,7 @@ fn compute_right_endpoint_for_shorter_interval_case(
     cache: &cache::EntryType,
     beta_minus_1: i32,
 ) -> CarrierUint {
-    (cache.high() + (cache.high() >> (SIGNIFICAND_BITS + 2)))
+    (cache.high() + (cache.high() >> (SIGNIFICAND_BITS + 1)))
         >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta_minus_1)
 }
 
