@@ -213,8 +213,8 @@ fn test_min_max_shift() {
     // 32-bit opt-size=1:  51 <= dist <= 59
     // 64-bit opt-size=0:  52 <= dist <= 52
     // 64-bit opt-size=1:  52 <= dist <= 59
-    assert_eq!(2.9008355198595578E-216, ieee_parts_to_double(false, 307, 0));
-    check!(2.9008355198595578E-216);
+    assert_eq!(2.900835519859558E-216, ieee_parts_to_double(false, 307, 0));
+    check!(2.900835519859558E-216);
     // 32-bit opt-size=0:  51 <= dist <= 51
     // 32-bit opt-size=1:  51 <= dist <= 59
     // 64-bit opt-size=0:  52 <= dist <= 52
