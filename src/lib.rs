@@ -438,39 +438,8 @@ fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
         && exponent <= CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD
 }
 
-const fn rotr64(n: u64, r: u32) -> u64 {
-    let r = r & 63;
-    (n >> r) | (n << ((64 - r) & 63))
-}
-
-fn may_have_trailing_zeros(mut significand: u64, mut exponent: i32) -> Decimal {
-    // Port of the C++ remove_trailing_zeros algorithm for 64-bit
-    // See https://github.com/jk-jeon/rtz_benchmark.
-    // The idea of branchless search below is by reddit users r/pigeon768 and
-    // r/TheoreticalDumbass.
-
-    let mut r = rotr64(significand.wrapping_mul(28999941890838049), 8);
-    let mut b = r < 184467440738;
-    let mut s = b as i32;
-    significand = if b { r } else { significand };
-
-    r = rotr64(significand.wrapping_mul(182622766329724561), 4);
-    b = r < 1844674407370956;
-    s = s * 2 + (b as i32);
-    significand = if b { r } else { significand };
-
-    r = rotr64(significand.wrapping_mul(10330176681277348905), 2);
-    b = r < 184467440737095517;
-    s = s * 2 + (b as i32);
-    significand = if b { r } else { significand };
-
-    r = rotr64(significand.wrapping_mul(14757395258967641293), 1);
-    b = r < 1844674407370955162;
-    s = s * 2 + (b as i32);
-    significand = if b { r } else { significand };
-
-    exponent += s;
-
+#[inline(always)]
+fn may_have_trailing_zeros(significand: u64, exponent: i32) -> Decimal {
     Decimal {
         significand,
         exponent,
