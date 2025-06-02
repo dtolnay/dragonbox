@@ -18,67 +18,6 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-use crate::{CarrierUint, CARRIER_BITS};
-
-const fn modular_inverse<const A: CarrierUint>() -> CarrierUint {
-    // By Euler's theorem, a^phi(2^n) == 1 (mod 2^n),
-    // where phi(2^n) = 2^(n-1), so the modular inverse of a is
-    // a^(2^(n-1) - 1) = a^(1 + 2 + 2^2 + ... + 2^(n-2)).
-    let mut mod_inverse: CarrierUint = 1;
-    let mut i = 1;
-    while i < CARRIER_BITS {
-        mod_inverse = mod_inverse.wrapping_mul(mod_inverse).wrapping_mul(A);
-        i += 1;
-    }
-    mod_inverse
-}
-
-struct Table<const A: CarrierUint, const N: usize> {
-    //assert(a % 2 != 0);
-    //assert(N > 0);
-    mod_inv: [CarrierUint; N],
-    max_quotients: [CarrierUint; N],
-}
-
-impl<const A: CarrierUint, const N: usize> Table<A, N> {
-    const TABLE: Self = {
-        let mod_inverse = modular_inverse::<A>();
-        let mut mod_inv = [0; N];
-        let mut max_quotients = [0; N];
-        let mut pow_of_mod_inverse: CarrierUint = 1;
-        let mut pow_of_a = 1;
-        let mut i = 0;
-        while i < N {
-            mod_inv[i] = pow_of_mod_inverse;
-            max_quotients[i] = CarrierUint::MAX / pow_of_a;
-
-            pow_of_mod_inverse = pow_of_mod_inverse.wrapping_mul(mod_inverse);
-            pow_of_a *= A;
-            i += 1;
-        }
-        Table {
-            mod_inv,
-            max_quotients,
-        }
-    };
-}
-
-pub(crate) unsafe fn divisible_by_power_of_5<const TABLE_SIZE: usize>(
-    x: CarrierUint,
-    exp: u32,
-) -> bool {
-    let table = &Table::<5, TABLE_SIZE>::TABLE;
-    debug_assert!((exp as usize) < TABLE_SIZE);
-    (x * *table.mod_inv.get_unchecked(exp as usize))
-        <= *table.max_quotients.get_unchecked(exp as usize)
-}
-
-pub(crate) fn divisible_by_power_of_2(x: CarrierUint, exp: u32) -> bool {
-    debug_assert!(exp >= 1);
-    debug_assert!(x != 0);
-    x.trailing_zeros() >= exp
-}
-
 // Replace n by floor(n / 10^N).
 // Returns true if and only if n is divisible by 10^N.
 // Precondition: n <= 10^(N+1)
