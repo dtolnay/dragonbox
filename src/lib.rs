@@ -256,7 +256,7 @@ fn compute_normal_interval_case(
     loop {
         if r < deltai {
             // Exclude the right endpoint if necessary.
-            if r == 0 && !z_result.is_integer && !include_right_endpoint {
+            if r == 0 && z_result.is_integer && !include_right_endpoint {
                 significand -= 1;
                 r = BIG_DIVISOR;
                 break;

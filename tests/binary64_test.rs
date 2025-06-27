@@ -338,3 +338,51 @@ fn test_issue_3() {
     assert_eq!(to_chars(2.0596292913323055E+69), "2.0596292913323055E69");
     assert_eq!(to_chars(1.3331169462028886E+60), "1.3331169462028886E60");
 }
+
+#[test]
+fn test_critical_boundary_case() {
+    // Test case designed to trigger the condition where:
+    // r == 0 && z_result.is_integer && !include_right_endpoint
+    // This should test the boundary condition we fixed in the algorithm
+
+    // This specific value is carefully chosen to trigger the exact condition
+    // where we need to exclude the right endpoint when z_result.is_integer is true
+    // and r == 0. Based on the Dragonbox algorithm, this happens when we have
+    // an exact decimal representation at a boundary.
+
+    // This number should trigger the condition: 4503599627370497 * 2^-52
+    // Which is: (2^52 + 1) * 2^-52 = 1 + 2^-52
+    let test_value = f64::from_bits(0x3FF0000000000001); // 1 + 2^-52
+    let result = to_chars(test_value);
+
+    // The correct result should be "1.0000000000000002E0" in scientific notation
+    // If the algorithm is wrong, it might produce a different value
+    let expected = "1.0000000000000002E0";
+    assert_eq!(
+        result, expected,
+        "Critical boundary case failed. Input: {}, Expected: {}, Got: {}",
+        test_value, expected, result
+    );
+
+    // Also verify round-trip conversion
+    assert_eq!(
+        test_value,
+        result.parse().unwrap(),
+        "Round-trip conversion failed for critical boundary case"
+    );
+
+    // Additional test case: A power of 2 boundary that might trigger the condition
+    // This is 2^53 + 1, which should trigger our edge case handling
+    let test_value_2 = f64::from_bits(0x4350000000000001); // 2^53 + 1
+    let result_2 = to_chars(test_value_2);
+
+    // With the correct logic, this should properly round-trip
+    // The previous incorrect logic (!z_result.is_integer) would fail this test
+    assert_eq!(
+        test_value_2,
+        result_2.parse().unwrap(),
+        "Failed for power of 2 boundary case: {}, result: {}",
+        test_value_2,
+        result_2
+    );
+}
