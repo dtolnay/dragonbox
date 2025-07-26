@@ -19,6 +19,7 @@
 // KIND, either express or implied.
 
 #![allow(
+    clippy::approx_constant,
     clippy::cast_lossless,
     clippy::excessive_precision,
     clippy::float_cmp,
