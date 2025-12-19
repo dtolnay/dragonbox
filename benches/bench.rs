@@ -1,8 +1,8 @@
 #![feature(test)]
-#![allow(clippy::approx_constant, clippy::unreadable_literal)]
 
 extern crate test;
 
+use std::f64;
 use std::hint;
 use std::io::Write;
 use test::Bencher;
@@ -47,6 +47,6 @@ macro_rules! benches {
 benches! {
     bench_0_f64(0f64),
     bench_short_f64(0.1234f64),
-    bench_e_f64(2.718281828459045f64),
+    bench_e_f64(f64::consts::E),
     bench_max_f64(f64::MAX),
 }
