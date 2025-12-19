@@ -13,7 +13,12 @@ repository = "https://github.com/dtolnay/dragonbox"
 rust-version = "1.68"
 
 [dev-dependencies]
+criterion = { version = "0.8", default-features = false }
 rand = "0.9"
+
+[[bench]]
+name = "bench"
+harness = false
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

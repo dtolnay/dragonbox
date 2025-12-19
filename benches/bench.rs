@@ -1,52 +1,36 @@
-#![feature(test)]
-
-extern crate test;
-
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::f64;
 use std::hint;
 use std::io::Write;
-use test::Bencher;
 
-macro_rules! benches {
-    ($($name:ident($value:expr),)*) => {
-        mod bench_dragonbox {
-            use super::*;
-            $(
-                #[bench]
-                fn $name(b: &mut Bencher) {
-                    let mut buf = dragonbox::Buffer::new();
-
-                    b.iter(move || {
-                        let value = hint::black_box($value);
-                        let formatted = buf.format_finite(value);
-                        hint::black_box(formatted);
-                    });
-                }
-            )*
-        }
-
-        mod bench_std_fmt {
-            use super::*;
-            $(
-                #[bench]
-                fn $name(b: &mut Bencher) {
-                    let mut buf = Vec::with_capacity(20);
-
-                    b.iter(|| {
-                        buf.clear();
-                        let value = hint::black_box($value);
-                        write!(&mut buf, "{}", value).unwrap();
-                        hint::black_box(buf.as_slice());
-                    });
-                }
-            )*
-        }
-    };
+fn do_bench(c: &mut Criterion, group_name: &str, float: f64) {
+    let mut group = c.benchmark_group(group_name);
+    group.bench_function("dragonbox", |b| {
+        let mut buf = dragonbox::Buffer::new();
+        b.iter(move || {
+            let float = hint::black_box(float);
+            let formatted = buf.format_finite(float);
+            hint::black_box(formatted);
+        });
+    });
+    group.bench_function("std::fmt", |b| {
+        let mut buf = Vec::with_capacity(20);
+        b.iter(|| {
+            buf.clear();
+            let float = hint::black_box(float);
+            write!(&mut buf, "{float}").unwrap();
+            hint::black_box(buf.as_slice());
+        });
+    });
+    group.finish();
 }
 
-benches! {
-    bench_0_f64(0f64),
-    bench_short_f64(0.1234f64),
-    bench_e_f64(f64::consts::E),
-    bench_max_f64(f64::MAX),
+fn bench(c: &mut Criterion) {
+    do_bench(c, "f64[0]", 0f64);
+    do_bench(c, "f64[short]", 0.1234f64);
+    do_bench(c, "f64[e]", f64::consts::E);
+    do_bench(c, "f64[max]", f64::MAX);
 }
+
+criterion_group!(benches, bench);
+criterion_main!(benches);
