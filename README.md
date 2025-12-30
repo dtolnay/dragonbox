@@ -5,8 +5,11 @@
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-dragonbox-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/dragonbox)
 [<img alt="build status" src="https://img.shields.io/github/actions/workflow/status/dtolnay/dragonbox/ci.yml?branch=master&style=for-the-badge" height="20">](https://github.com/dtolnay/dragonbox/actions?query=branch%3Amaster)
 
-This crate contains a basic port of <https://github.com/jk-jeon/dragonbox> to
-Rust for benchmarking purposes.
+This crate contains a basic port of
+[https://github.com/jk-jeon/dragonbox][upstream] to Rust for benchmarking
+purposes.
+
+[upstream]: https://github.com/jk-jeon/dragonbox/tree/0d40afb18af18dc188b9e0239dceb27102aedeb9
 
 Please see the upstream repo for an explanation of the approach and comparison
 to the Ryū algorithm.
