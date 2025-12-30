@@ -275,8 +275,8 @@ fn compute_nearest_normal(
             let two_fl = two_fc - 1;
 
             if !has_even_significand_bits
-                || exponent < CASE_FC_PM_HALF_LOWER_THRESHOLD
-                || exponent > DIVISIBILITY_CHECK_BY_5_THRESHOLD
+                || !(CASE_FC_PM_HALF_LOWER_THRESHOLD..=DIVISIBILITY_CHECK_BY_5_THRESHOLD)
+                    .contains(&exponent)
             {
                 // If the left endpoint is not included, the condition for
                 // success is z^(f) < delta^(f) (odd parity). Otherwise, the
