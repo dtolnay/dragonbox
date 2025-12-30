@@ -1,7 +1,7 @@
 // Translated from C++ to Rust. The original C++ code can be found at
 // https://github.com/jk-jeon/dragonbox and carries the following license:
 //
-// Copyright 2020-2021 Junekey Jeon
+// Copyright 2020-2022 Junekey Jeon
 //
 // The contents of this file may be used under the terms of
 // the Apache License v2.0 with LLVM Exceptions.
@@ -211,6 +211,12 @@ struct Decimal {
 
 const KAPPA: u32 = 2;
 
+const MAX_POWER_OF_FACTOR_OF_5: i32 = log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2);
+const DIVISIBILITY_CHECK_BY_5_THRESHOLD: i32 =
+    log::floor_log2_pow10(MAX_POWER_OF_FACTOR_OF_5 + KAPPA as i32 + 1);
+
+const CASE_FC_PM_HALF_LOWER_THRESHOLD: i32 = -(KAPPA as i32) - log::floor_log5_pow2(KAPPA as i32);
+
 // The main algorithm assumes the input is a normal/subnormal finite number
 fn compute_nearest_normal(
     two_fc: CarrierUint,
@@ -267,12 +273,27 @@ fn compute_nearest_normal(
             }
         } else {
             let two_fl = two_fc - 1;
-            let ComputeMulParityResult {
-                parity: xi_parity,
-                is_integer: is_x_integer,
-            } = compute_mul_parity(two_fl, &cache, beta_minus_1);
-            if !xi_parity && (!has_even_significand_bits || !is_x_integer) {
-                break 'small_divisor_case_label;
+
+            if !has_even_significand_bits
+                || exponent < CASE_FC_PM_HALF_LOWER_THRESHOLD
+                || exponent > DIVISIBILITY_CHECK_BY_5_THRESHOLD
+            {
+                // If the left endpoint is not included, the condition for
+                // success is z^(f) < delta^(f) (odd parity). Otherwise, the
+                // inequalities on exponent ensure that x is not an integer, so
+                // if z^(f) >= delta^(f) (even parity), we in fact have strict
+                // inequality.
+                if !compute_mul_parity(two_fl, &cache, beta_minus_1).parity {
+                    break 'small_divisor_case_label;
+                }
+            } else {
+                let ComputeMulParityResult {
+                    parity: xi_parity,
+                    is_integer: is_x_integer,
+                } = compute_mul_parity(two_fl, &cache, beta_minus_1);
+                if !xi_parity && !is_x_integer {
+                    break 'small_divisor_case_label;
+                }
             }
         }
         ret_value.exponent = minus_k + KAPPA as i32 + 1;
