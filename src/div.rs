@@ -106,8 +106,7 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
     const COMPARISON_MASK: u32 = (1 << (N + Info::BITS_FOR_COMPARISON as u32)) - 1;
 
     // The lowest N bits of n must be zero, and (n & comparison_mask) >> N must
-    // be at most threshold. Dear compiler, please optimize this into ROR
-    // instruction. (And clang refuses to do that, I don't know why.)
+    // be at most threshold.
     let c = (*n & COMPARISON_MASK).rotate_right(N);
 
     *n >>= Info::SHIFT_AMOUNT;
