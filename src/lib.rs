@@ -51,7 +51,6 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(
     clippy::bool_to_int_with_if,
-    clippy::cast_lossless,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
@@ -256,7 +255,7 @@ fn compute_nearest_normal(
         { SIGNIFICAND_BITS as i32 + KAPPA as i32 + 2 },
         { KAPPA as i32 + 1 },
     >(zi);
-    let mut r = (zi - BIG_DIVISOR as u64 * ret_value.significand) as u32;
+    let mut r = (zi - u64::from(BIG_DIVISOR) * ret_value.significand) as u32;
 
     'small_divisor_case_label: loop {
         if r > deltai {
@@ -302,7 +301,7 @@ fn compute_nearest_normal(
     let divisible_by_10_to_the_kappa = div::check_divisibility_and_divide_by_pow10(&mut dist);
 
     // Add dist / 10^kappa to the significand.
-    ret_value.significand += dist as CarrierUint;
+    ret_value.significand += CarrierUint::from(dist);
 
     if divisible_by_10_to_the_kappa {
         // Check z^(f) >= epsilon^(f)

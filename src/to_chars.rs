@@ -337,7 +337,7 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
 
         if may_have_more_trailing_zeros {
             let tz = *TRAILING_ZERO_COUNT_TABLE.get_unchecked(c2 as usize);
-            exponent_position -= tz as i32;
+            exponent_position -= i32::from(tz);
             if tz == 0 {
                 ptr::copy_nonoverlapping(
                     RADIX_100_TABLE.as_ptr().add(c2 as usize * 2),
