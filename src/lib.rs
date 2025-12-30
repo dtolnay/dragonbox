@@ -73,6 +73,7 @@ mod buffer;
 mod cache;
 mod div;
 mod log;
+mod policy;
 mod to_chars;
 mod wuint;
 
@@ -184,10 +185,6 @@ const fn count_factors<const A: usize>(mut n: usize) -> u32 {
         c += 1;
     }
     c
-}
-
-fn prefer_round_down(r: &Decimal) -> bool {
-    r.significand % 2 != 0
 }
 
 struct Decimal {
@@ -352,7 +349,7 @@ fn compute_nearest_normal(
             // If z^(f) >= epsilon^(f), we might have a tie
             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
             // For tie-to-up case, we can just choose the upper one.
-            if prefer_round_down(&ret_value) && is_y_integer {
+            if policy::prefer_round_down(&ret_value) && is_y_integer {
                 ret_value.significand -= 1;
             }
         }
@@ -402,7 +399,7 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
             - SIGNIFICAND_BITS as i32;
     const SHORTER_INTERVAL_TIE_UPPER_THRESHOLD: i32 =
         -log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2) - 2 - SIGNIFICAND_BITS as i32;
-    if prefer_round_down(&ret_value)
+    if policy::prefer_round_down(&ret_value)
         && exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
         && exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
     {
