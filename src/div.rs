@@ -69,7 +69,7 @@ pub(crate) unsafe fn divisible_by_power_of_5<const TABLE_SIZE: usize>(
 ) -> bool {
     let table = &Table::<5, TABLE_SIZE>::TABLE;
     debug_assert!((exp as usize) < TABLE_SIZE);
-    (x * *table.mod_inv.get_unchecked(exp as usize))
+    x.wrapping_mul(*table.mod_inv.get_unchecked(exp as usize))
         <= *table.max_quotients.get_unchecked(exp as usize)
 }
 
