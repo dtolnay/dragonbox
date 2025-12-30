@@ -109,7 +109,7 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
     // be at most threshold. Dear compiler, please optimize this into ROR
     // instruction. (And clang refuses to do that, I don't know why.)
     let masked = *n & COMPARISON_MASK;
-    let c = (masked >> N) | (masked << (32 - N));
+    let c = masked.rotate_right(N);
 
     *n >>= Info::SHIFT_AMOUNT;
     c <= Info::THRESHOLD
