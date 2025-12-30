@@ -224,6 +224,13 @@ const _: () = {
     assert!(min_k >= cache::MIN_K);
 };
 
+const _: () = {
+    let a = -log::floor_log10_pow2_minus_log10_4_over_3(MIN_EXPONENT - SIGNIFICAND_BITS as i32 + 1);
+    let b = -log::floor_log10_pow2(MIN_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32;
+    let max_k = if a > b { a } else { b };
+    assert!(max_k <= cache::MAX_K);
+};
+
 const MAX_POWER_OF_FACTOR_OF_5: i32 = log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2);
 const DIVISIBILITY_CHECK_BY_5_THRESHOLD: i32 =
     log::floor_log2_pow10(MAX_POWER_OF_FACTOR_OF_5 + KAPPA as i32 + 1);
