@@ -19,7 +19,7 @@
 // KIND, either express or implied.
 
 pub(crate) type EntryType = u128;
-const MIN_K: i32 = -292;
+pub(crate) const MIN_K: i32 = -292;
 const MAX_K: i32 = 326;
 
 pub(crate) unsafe fn get(k: i32) -> EntryType {

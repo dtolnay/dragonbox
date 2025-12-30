@@ -105,6 +105,7 @@ pub trait Float: Sealed {}
 const SIGNIFICAND_BITS: usize = 52;
 const EXPONENT_BITS: usize = 11;
 const MIN_EXPONENT: i32 = -1022;
+const MAX_EXPONENT: i32 = 1023;
 const EXPONENT_BIAS: i32 = -1023;
 
 // Defines an unsigned integer type that is large enough
@@ -215,6 +216,13 @@ const KAPPA: u32 = 2;
 const _: () = assert!(
     CARRIER_BITS as i32 >= SIGNIFICAND_BITS as i32 + 2 + log::floor_log2_pow10(KAPPA as i32 + 1),
 );
+
+const _: () = {
+    let a = -log::floor_log10_pow2_minus_log10_4_over_3(MAX_EXPONENT - SIGNIFICAND_BITS as i32);
+    let b = -log::floor_log10_pow2(MAX_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32;
+    let min_k = if a < b { a } else { b };
+    assert!(min_k >= cache::MIN_K);
+};
 
 const MAX_POWER_OF_FACTOR_OF_5: i32 = log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2);
 const DIVISIBILITY_CHECK_BY_5_THRESHOLD: i32 =
