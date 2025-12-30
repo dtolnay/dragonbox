@@ -33,7 +33,7 @@ pub(crate) fn umul192_upper128(x: u64, y: u128) -> u128 {
     r
 }
 
-// Get middle 64-bits of multiplication of a 64-bit unsigned integer and a
+// Get lower 128-bits of multiplication of a 64-bit unsigned integer and a
 // 128-bit unsigned integer.
 pub(crate) fn umul192_lower128(x: u64, y: u128) -> u128 {
     let high = x.wrapping_mul(y.high());

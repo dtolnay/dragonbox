@@ -272,6 +272,7 @@ fn compute_nearest_normal(
                 break 'small_divisor_case_label;
             }
         } else {
+            // r == deltai; compare fractional parts.
             let two_fl = two_fc - 1;
 
             if !has_even_significand_bits
@@ -312,13 +313,13 @@ fn compute_nearest_normal(
     let approx_y_parity = ((dist ^ (SMALL_DIVISOR / 2)) & 1) != 0;
 
     // Is dist divisible by 10^kappa?
-    let divisible_by_10_to_the_kappa = div::check_divisibility_and_divide_by_pow10(&mut dist);
+    let divisible_by_small_divisor = div::check_divisibility_and_divide_by_pow10(&mut dist);
 
     // Add dist / 10^kappa to the significand.
     ret_value.significand += CarrierUint::from(dist);
 
-    if divisible_by_10_to_the_kappa {
-        // Check z^(f) >= epsilon^(f)
+    if divisible_by_small_divisor {
+        // Check z^(f) >= epsilon^(f).
         // We have either yi == zi - epsiloni or yi == (zi - epsiloni) - 1,
         // where yi == zi - epsiloni if and only if z^(f) >= epsilon^(f).
         // Since there are only 2 possibilities, we only need to care about the parity.
