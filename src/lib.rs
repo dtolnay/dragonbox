@@ -190,24 +190,6 @@ fn prefer_round_down(r: &Decimal) -> bool {
     r.significand % 2 != 0
 }
 
-// Compute floor(n / 10^N) for small N.
-// Precondition: n <= 2^a * 5^b (a = max_pow2, b = max_pow5)
-fn divide_by_pow10<const N: u32, const MAX_POW2: i32, const MAX_POW5: i32>(n: u64) -> u64 {
-    // Ensure no overflow.
-    assert!(MAX_POW2 + (log::floor_log2_pow10(MAX_POW5) - MAX_POW5) < 64);
-
-    // Specialize for 64-bit division by 1000.
-    // Ensure that the correctness condition is met.
-    if N == 3
-        && MAX_POW2 + (log::floor_log2_pow10(N as i32 + MAX_POW5) - (N as i32 + MAX_POW5)) < 70
-    {
-        wuint::umul128_upper64(n, 0x8312_6e97_8d4f_df3c) >> 9
-    } else {
-        let divisor = const { compute_power64::<N>(10) };
-        n / divisor
-    }
-}
-
 struct Decimal {
     significand: u64,
     exponent: i32,
@@ -289,7 +271,7 @@ fn compute_nearest_normal(
 
     // Using an upper bound on zi, we might be able to optimize the division
     // better than the compiler; we are computing zi / big_divisor here.
-    ret_value.significand = divide_by_pow10::<
+    ret_value.significand = div::divide_by_pow10::<
         { KAPPA + 1 },
         { SIGNIFICAND_BITS as i32 + KAPPA as i32 + 2 },
         { KAPPA as i32 + 1 },
