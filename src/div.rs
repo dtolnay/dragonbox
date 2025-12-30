@@ -38,7 +38,7 @@ struct DivisibilityCheck<const A: CarrierUint, const N: usize>;
 #[derive(Copy, Clone)]
 struct Entry {
     mod_inv: CarrierUint,
-    max_quotients: CarrierUint,
+    max_quotient: CarrierUint,
 }
 
 impl<const A: CarrierUint, const N: usize> DivisibilityCheck<A, N> {
@@ -49,14 +49,14 @@ impl<const A: CarrierUint, const N: usize> DivisibilityCheck<A, N> {
         let mod_inverse = modular_inverse::<A>();
         let mut table = [Entry {
             mod_inv: 0,
-            max_quotients: 0,
+            max_quotient: 0,
         }; N];
         let mut pow_of_mod_inverse: CarrierUint = 1;
         let mut pow_of_a = 1;
         let mut i = 0;
         while i < N {
             table[i].mod_inv = pow_of_mod_inverse;
-            table[i].max_quotients = CarrierUint::MAX / pow_of_a;
+            table[i].max_quotient = CarrierUint::MAX / pow_of_a;
 
             pow_of_mod_inverse = pow_of_mod_inverse.wrapping_mul(mod_inverse);
             pow_of_a *= A;
@@ -73,7 +73,7 @@ pub(crate) unsafe fn divisible_by_power_of_5<const TABLE_SIZE: usize>(
     let divtable = &DivisibilityCheck::<5, TABLE_SIZE>::TABLE;
     debug_assert!((exp as usize) < TABLE_SIZE);
     x.wrapping_mul(divtable.get_unchecked(exp as usize).mod_inv)
-        <= divtable.get_unchecked(exp as usize).max_quotients
+        <= divtable.get_unchecked(exp as usize).max_quotient
 }
 
 pub(crate) fn divisible_by_power_of_2(x: CarrierUint, exp: u32) -> bool {
