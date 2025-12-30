@@ -103,7 +103,7 @@ fn test_min_and_max() {
 
 #[test]
 fn test_lots_of_trailing_zeros() {
-    check!(2.9802322387695313E-8);
+    check!(2.9802322387695312E-8);
 }
 
 #[test]

@@ -186,11 +186,11 @@ const fn count_factors<const A: usize>(mut n: usize) -> u32 {
     c
 }
 
-fn break_rounding_tie(significand: &mut u64) {
-    *significand = if *significand % 2 == 0 {
-        *significand
+fn break_rounding_tie(r: &mut Decimal) {
+    r.significand = if r.significand % 2 == 0 {
+        r.significand
     } else {
-        *significand - 1
+        r.significand - 1
     };
 }
 
@@ -229,6 +229,11 @@ fn compute_nearest_normal(
     // Step 1: Schubfach multiplier calculation
     //////////////////////////////////////////////////////////////////////
 
+    let mut ret_value = Decimal {
+        significand: 0,
+        exponent: 0,
+    };
+
     // Compute k and beta.
     let minus_k = log::floor_log10_pow2(exponent) - KAPPA as i32;
     let ref cache = unsafe { cache::get(-minus_k) };
@@ -249,12 +254,12 @@ fn compute_nearest_normal(
 
     // Using an upper bound on zi, we might be able to optimize the division
     // better than the compiler; we are computing zi / big_divisor here.
-    let mut significand = divide_by_pow10::<
+    ret_value.significand = divide_by_pow10::<
         { KAPPA + 1 },
         { SIGNIFICAND_BITS as i32 + KAPPA as i32 + 2 },
         { KAPPA as i32 + 1 },
     >(zi);
-    let mut r = (zi - BIG_DIVISOR as u64 * significand) as u32;
+    let mut r = (zi - BIG_DIVISOR as u64 * ret_value.significand) as u32;
 
     'small_divisor_case_label: loop {
         if r > deltai {
@@ -265,7 +270,7 @@ fn compute_nearest_normal(
                 && !has_even_significand_bits
                 && is_product_integer_fc_pm_half(two_fr, exponent, minus_k)
             {
-                significand -= 1;
+                ret_value.significand -= 1;
                 r = BIG_DIVISOR;
                 break 'small_divisor_case_label;
             }
@@ -281,20 +286,17 @@ fn compute_nearest_normal(
                 break 'small_divisor_case_label;
             }
         }
-        let exponent = minus_k + KAPPA as i32 + 1;
+        ret_value.exponent = minus_k + KAPPA as i32 + 1;
 
-        return Decimal {
-            significand,
-            exponent,
-        };
+        return ret_value;
     }
 
     //////////////////////////////////////////////////////////////////////
     // Step 3: Find the significand with the smaller divisor
     //////////////////////////////////////////////////////////////////////
 
-    significand *= 10;
-    let exponent = minus_k + KAPPA as i32;
+    ret_value.significand *= 10;
+    ret_value.exponent = minus_k + KAPPA as i32;
 
     let mut dist = r - (deltai / 2) + (SMALL_DIVISOR / 2);
     let approx_y_parity = ((dist ^ (SMALL_DIVISOR / 2)) & 1) != 0;
@@ -303,7 +305,7 @@ fn compute_nearest_normal(
     let divisible_by_10_to_the_kappa = div::check_divisibility_and_divide_by_pow10(&mut dist);
 
     // Add dist / 10^kappa to the significand.
-    significand += dist as CarrierUint;
+    ret_value.significand += dist as CarrierUint;
 
     if divisible_by_10_to_the_kappa {
         // Check z^(f) >= epsilon^(f)
@@ -313,24 +315,26 @@ fn compute_nearest_normal(
         // Also, zi and r should have the same parity since the divisor
         // is an even number.
         if compute_mul_parity(two_fc, cache, beta_minus_1) != approx_y_parity {
-            significand -= 1;
+            ret_value.significand -= 1;
         } else {
             // If z^(f) >= epsilon^(f), we might have a tie
             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
             // For tie-to-up case, we can just choose the upper one.
             if is_product_integer_fc(two_fc, exponent, minus_k) {
-                break_rounding_tie(&mut significand);
+                break_rounding_tie(&mut ret_value);
             }
         }
     }
 
-    Decimal {
-        significand,
-        exponent,
-    }
+    ret_value
 }
 
 fn compute_nearest_shorter(exponent: i32) -> Decimal {
+    let mut ret_value = Decimal {
+        significand: 0,
+        exponent: 0,
+    };
+
     // Compute k and beta.
     let minus_k = log::floor_log10_pow2_minus_log10_4_over_3(exponent);
     let beta_minus_1 = exponent + log::floor_log2_pow10(-minus_k);
@@ -347,19 +351,17 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     }
 
     // Try bigger divisor.
-    let significand = zi / 10;
+    ret_value.significand = zi / 10;
 
     // If succeed, remove trailing zeros if necessary and return.
-    if significand * 10 >= xi {
-        return Decimal {
-            significand,
-            exponent: minus_k + 1,
-        };
+    if ret_value.significand * 10 >= xi {
+        ret_value.exponent = minus_k + 1;
+        return ret_value;
     }
 
     // Otherwise, compute the round-up of y.
-    let mut significand = compute_round_up_for_shorter_interval_case(cache, beta_minus_1);
-    let exponent = minus_k;
+    ret_value.significand = compute_round_up_for_shorter_interval_case(cache, beta_minus_1);
+    ret_value.exponent = minus_k;
 
     // When tie occurs, choose one of them according to the rule.
     const SHORTER_INTERVAL_TIE_LOWER_THRESHOLD: i32 =
@@ -371,15 +373,12 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     if exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
         && exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
     {
-        break_rounding_tie(&mut significand);
-    } else if significand < xi {
-        significand += 1;
+        break_rounding_tie(&mut ret_value);
+    } else if ret_value.significand < xi {
+        ret_value.significand += 1;
     }
 
-    Decimal {
-        significand,
-        exponent,
-    }
+    ret_value
 }
 
 fn compute_mul(u: CarrierUint, cache: &cache::EntryType) -> CarrierUint {
