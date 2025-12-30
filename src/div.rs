@@ -27,24 +27,21 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
 
     struct Info;
     impl Info {
-        const MAGIC_NUMBER: u32 = 0x147c29;
-        const BITS_FOR_COMPARISON: i32 = 12;
-        const THRESHOLD: u32 = 0xa3;
-        const SHIFT_AMOUNT: i32 = 27;
+        const MAGIC_NUMBER: u32 = 0xa3d71;
+        const MARGIN_BITS: i32 = 10;
+        const DIVISIBILITY_CHECK_BITS: i32 = 16;
     }
 
     *n *= Info::MAGIC_NUMBER;
+    *n >>= Info::MARGIN_BITS;
 
-    // Mask for the lowest (N + bits_for_comparison)-bits.
+    // Mask for the lowest (divisibility_check_bits)-bits.
     const {
-        assert!(Info::BITS_FOR_COMPARISON as u32 + N < 32);
+        assert!(Info::DIVISIBILITY_CHECK_BITS < 32);
     }
-    const COMPARISON_MASK: u32 = (1 << (N + Info::BITS_FOR_COMPARISON as u32)) - 1;
+    const COMPARISON_MASK: u32 = (1 << Info::DIVISIBILITY_CHECK_BITS) - 1;
 
-    // The lowest N bits of n must be zero, and (n & comparison_mask) >> N must
-    // be at most threshold.
-    let c = (*n & COMPARISON_MASK).rotate_right(N);
-
-    *n >>= Info::SHIFT_AMOUNT;
-    c <= Info::THRESHOLD
+    let result = (*n & COMPARISON_MASK) == 0;
+    *n >>= Info::DIVISIBILITY_CHECK_BITS;
+    result
 }
