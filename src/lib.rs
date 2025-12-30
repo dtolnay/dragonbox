@@ -240,6 +240,12 @@ fn compute_nearest_normal(
     // Compute zi and deltai.
     // 10^kappa <= deltai < 10^(kappa + 1)
     let deltai = compute_delta(&cache, beta_minus_1);
+    // The exceptional case 29711844 * 2^-81
+    // (~1.2288530660000000001731007559513386695471126586198806762695... * 10^-17)
+    // for binary32 will not cause any problem here, because (two_fc | 1) is
+    // always an odd integer. Also, for the exceptional case above r = 7 and
+    // deltai = 82, so integer checks are never performed, so there is no
+    // problem.
     let ComputeMulResult {
         result: zi,
         is_integer: is_z_integer,
