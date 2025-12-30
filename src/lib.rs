@@ -372,6 +372,8 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
         && exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
     {
         ret_value.significand -= 1;
+    } else if ret_value.significand < xi {
+        ret_value.significand += 1;
     }
     ret_value
 }
