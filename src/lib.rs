@@ -420,7 +420,7 @@ fn compute_round_up_for_shorter_interval_case(
     cache: &cache::EntryType,
     beta_minus_1: i32,
 ) -> CarrierUint {
-    ((cache.high() >> ((CARRIER_BITS - SIGNIFICAND_BITS - 2) as i32 - beta_minus_1)) + 1) / 2
+    (cache.high() >> ((CARRIER_BITS - SIGNIFICAND_BITS - 2) as i32 - beta_minus_1)).div_ceil(2)
 }
 
 const MAX_POWER_OF_FACTOR_OF_5: i32 = log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2);
