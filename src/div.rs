@@ -99,15 +99,17 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
 
     *n *= Info::MAGIC_NUMBER;
 
-    const COMPARISON_MASK: u32 = if Info::BITS_FOR_COMPARISON >= 32 {
-        u32::MAX
-    } else {
-        ((1 << Info::BITS_FOR_COMPARISON) - 1) as u32
-    };
+    // Mask for the lowest (N + bits_for_comparison)-bits.
+    const {
+        assert!(Info::BITS_FOR_COMPARISON as u32 + N < 32);
+    }
+    const COMPARISON_MASK: u32 = (1 << (N + Info::BITS_FOR_COMPARISON as u32)) - 1;
 
-    // The lowest N bits of (n & comparison_mask) must be zero, and
-    // (n >> N) & comparison_mask must be at most threshold.
-    let c = ((*n >> N) | (*n << (Info::BITS_FOR_COMPARISON as u32 - N))) & COMPARISON_MASK;
+    // The lowest N bits of n must be zero, and (n & comparison_mask) >> N must
+    // be at most threshold. Dear compiler, please optimize this into ROR
+    // instruction. (And clang refuses to do that, I don't know why.)
+    let masked = *n & COMPARISON_MASK;
+    let c = (masked >> N) | (masked << (32 - N));
 
     *n >>= Info::SHIFT_AMOUNT;
     c <= Info::THRESHOLD
