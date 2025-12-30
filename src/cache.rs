@@ -23,7 +23,7 @@ const MIN_K: i32 = -292;
 const MAX_K: i32 = 326;
 
 pub(crate) unsafe fn get(k: i32) -> EntryType {
-    debug_assert!(k >= MIN_K && k <= MAX_K);
+    debug_assert!((MIN_K..=MAX_K).contains(&k));
     *CACHE.get_unchecked((k - MIN_K) as usize)
 }
 

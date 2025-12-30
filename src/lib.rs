@@ -59,7 +59,6 @@
     clippy::expl_impl_clone_on_copy,
     clippy::if_not_else,
     clippy::items_after_statements,
-    clippy::manual_range_contains,
     clippy::must_use_candidate,
     clippy::needless_doctest_main,
     clippy::never_loop,
@@ -493,8 +492,9 @@ fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
         >(10)
             / 3,
     );
-    exponent >= CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD
-        && exponent <= CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD
+    (CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD
+        ..=CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD)
+        .contains(&exponent)
 }
 
 fn to_decimal(x: f64) -> Decimal {
