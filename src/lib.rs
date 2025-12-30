@@ -65,7 +65,6 @@
     clippy::shadow_unrelated,
     clippy::similar_names,
     clippy::too_many_lines,
-    clippy::toplevel_ref_arg,
     clippy::unreadable_literal,
     clippy::unusual_byte_groupings
 )]
@@ -231,14 +230,14 @@ fn compute_nearest_normal(
 
     // Compute k and beta.
     let minus_k = log::floor_log10_pow2(exponent) - KAPPA as i32;
-    let ref cache = unsafe { cache::get(-minus_k) };
+    let cache = unsafe { cache::get(-minus_k) };
     let beta_minus_1 = exponent + log::floor_log2_pow10(-minus_k);
 
     // Compute zi and deltai.
     // 10^kappa <= deltai < 10^(kappa + 1)
-    let deltai = compute_delta(cache, beta_minus_1);
+    let deltai = compute_delta(&cache, beta_minus_1);
     let two_fr = two_fc | 1;
-    let zi = compute_mul(two_fr << beta_minus_1, cache);
+    let zi = compute_mul(two_fr << beta_minus_1, &cache);
 
     //////////////////////////////////////////////////////////////////////
     // Step 2: Try larger divisor; remove trailing zeros if necessary
@@ -276,7 +275,7 @@ fn compute_nearest_normal(
             let two_fl = two_fc - 1;
             if (!has_even_significand_bits
                 || !is_product_integer_fc_pm_half(two_fl, exponent, minus_k))
-                && !compute_mul_parity(two_fl, cache, beta_minus_1)
+                && !compute_mul_parity(two_fl, &cache, beta_minus_1)
             {
                 break 'small_divisor_case_label;
             }
@@ -309,7 +308,7 @@ fn compute_nearest_normal(
         // Since there are only 2 possibilities, we only need to care about the parity.
         // Also, zi and r should have the same parity since the divisor
         // is an even number.
-        if compute_mul_parity(two_fc, cache, beta_minus_1) != approx_y_parity {
+        if compute_mul_parity(two_fc, &cache, beta_minus_1) != approx_y_parity {
             ret_value.significand -= 1;
         } else {
             // If z^(f) >= epsilon^(f), we might have a tie
@@ -335,10 +334,10 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     let beta_minus_1 = exponent + log::floor_log2_pow10(-minus_k);
 
     // Compute xi and zi.
-    let ref cache = unsafe { cache::get(-minus_k) };
+    let cache = unsafe { cache::get(-minus_k) };
 
-    let mut xi = compute_left_endpoint_for_shorter_interval_case(cache, beta_minus_1);
-    let zi = compute_right_endpoint_for_shorter_interval_case(cache, beta_minus_1);
+    let mut xi = compute_left_endpoint_for_shorter_interval_case(&cache, beta_minus_1);
+    let zi = compute_right_endpoint_for_shorter_interval_case(&cache, beta_minus_1);
 
     // If the left endpoint is not an integer, increase it.
     if !is_left_endpoint_integer_shorter_interval(exponent) {
@@ -355,7 +354,7 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     }
 
     // Otherwise, compute the round-up of y.
-    ret_value.significand = compute_round_up_for_shorter_interval_case(cache, beta_minus_1);
+    ret_value.significand = compute_round_up_for_shorter_interval_case(&cache, beta_minus_1);
     ret_value.exponent = minus_k;
 
     // When tie occurs, choose one of them according to the rule.
