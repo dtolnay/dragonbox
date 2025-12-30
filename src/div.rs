@@ -29,7 +29,6 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
     impl Info {
         const MAGIC_NUMBER: u32 = 656;
         const DIVISIBILITY_CHECK_BITS: i32 = 16;
-        const THRESHOLD: u32 = 655;
     }
 
     *n *= Info::MAGIC_NUMBER;
@@ -38,7 +37,7 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
         assert!(Info::DIVISIBILITY_CHECK_BITS < 32);
     }
     const MASK: u32 = (1 << Info::DIVISIBILITY_CHECK_BITS) - 1;
-    let result = (*n & MASK) < Info::THRESHOLD;
+    let result = (*n & MASK) < Info::MAGIC_NUMBER;
 
     *n >>= Info::DIVISIBILITY_CHECK_BITS;
     result

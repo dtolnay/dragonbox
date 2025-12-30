@@ -225,7 +225,11 @@ const _: () = {
 };
 
 const _: () = {
-    let a = -log::floor_log10_pow2_minus_log10_4_over_3(MIN_EXPONENT - SIGNIFICAND_BITS as i32 + 1);
+    // We do invoke shorter_interval_case for exponent == min_exponent case, so
+    // we should not add 1 here.
+    let a = -log::floor_log10_pow2_minus_log10_4_over_3(
+        (MIN_EXPONENT - SIGNIFICAND_BITS as i32/* + 1*/),
+    );
     let b = -log::floor_log10_pow2(MIN_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32;
     let max_k = if a > b { a } else { b };
     assert!(max_k <= cache::MAX_K);
