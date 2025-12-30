@@ -187,12 +187,8 @@ const fn count_factors<const A: usize>(mut n: usize) -> u32 {
     c
 }
 
-fn break_rounding_tie(r: &mut Decimal) {
-    r.significand = if r.significand % 2 == 0 {
-        r.significand
-    } else {
-        r.significand - 1
-    };
+fn prefer_round_down(r: &Decimal) -> bool {
+    r.significand % 2 != 0
 }
 
 // Compute floor(n / 10^N) for small N.
@@ -321,8 +317,8 @@ fn compute_nearest_normal(
             // If z^(f) >= epsilon^(f), we might have a tie
             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
             // For tie-to-up case, we can just choose the upper one.
-            if is_product_integer_fc(two_fc, exponent, minus_k) {
-                break_rounding_tie(&mut ret_value);
+            if prefer_round_down(&ret_value) && is_product_integer_fc(two_fc, exponent, minus_k) {
+                ret_value.significand -= 1;
             }
         }
     }
@@ -371,14 +367,12 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
             - SIGNIFICAND_BITS as i32;
     const SHORTER_INTERVAL_TIE_UPPER_THRESHOLD: i32 =
         -log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2) - 2 - SIGNIFICAND_BITS as i32;
-    if exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
+    if prefer_round_down(&ret_value)
+        && exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
         && exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
     {
-        break_rounding_tie(&mut ret_value);
-    } else if ret_value.significand < xi {
-        ret_value.significand += 1;
+        ret_value.significand -= 1;
     }
-
     ret_value
 }
 
