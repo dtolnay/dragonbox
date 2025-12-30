@@ -62,11 +62,9 @@
     clippy::must_use_candidate,
     clippy::needless_doctest_main,
     clippy::never_loop,
-    clippy::shadow_unrelated,
     clippy::similar_names,
     clippy::too_many_lines,
-    clippy::unreadable_literal,
-    clippy::unusual_byte_groupings
+    clippy::unreadable_literal
 )]
 
 mod buffer;
