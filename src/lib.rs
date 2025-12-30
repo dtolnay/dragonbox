@@ -50,6 +50,7 @@
 #![doc(html_root_url = "https://docs.rs/dragonbox/0.1.10")]
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(
+    clippy::assertions_on_constants,
     clippy::bool_to_int_with_if,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
