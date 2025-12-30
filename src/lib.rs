@@ -207,11 +207,8 @@ fn divide_by_pow10<const N: u32, const MAX_POW2: i32, const MAX_POW5: i32>(n: u6
     {
         wuint::umul128_upper64(n, 0x8312_6e97_8d4f_df3c) >> 9
     } else {
-        struct Divisor<const N: u32>;
-        impl<const N: u32> Divisor<N> {
-            const VALUE: u64 = compute_power64::<N>(10);
-        }
-        n / Divisor::<N>::VALUE
+        let divisor = const { compute_power64::<N>(10) };
+        n / divisor
     }
 }
 
