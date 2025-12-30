@@ -48,7 +48,7 @@
 
 #![no_std]
 #![doc(html_root_url = "https://docs.rs/dragonbox/0.1.10")]
-#![allow(unsafe_op_in_unsafe_fn)]
+#![allow(unsafe_op_in_unsafe_fn, unused_parens)]
 #![allow(
     clippy::assertions_on_constants,
     clippy::bool_to_int_with_if,
