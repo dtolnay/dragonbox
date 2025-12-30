@@ -57,6 +57,7 @@
     clippy::cast_sign_loss,
     clippy::comparison_chain,
     clippy::doc_markdown,
+    clippy::eq_op,
     clippy::expl_impl_clone_on_copy,
     clippy::if_not_else,
     clippy::items_after_statements,
