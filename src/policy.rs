@@ -20,6 +20,10 @@
 
 use crate::Decimal;
 
+pub(crate) fn on_trailing_zeros(r: &mut Decimal) {
+    r.exponent += crate::remove_trailing_zeros(&mut r.significand);
+}
+
 pub(crate) fn prefer_round_down(r: &Decimal) -> bool {
     r.significand % 2 != 0
 }

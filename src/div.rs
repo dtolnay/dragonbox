@@ -20,6 +20,53 @@
 
 use crate::{log, wuint};
 
+const fn modular_inverse<const A: u32>() -> u32 {
+    // By Euler's theorem, a^phi(2^n) == 1 (mod 2^n), where phi(2^n) = 2^(n-1),
+    // so the modular inverse of a is a^(2^(n-1) - 1) = a^(1 + 2 + 2^2 + ... +
+    // 2^(n-2)).
+    let bit_width = u32::BITS;
+    let mut mod_inverse = 1u32;
+    let mut i = 1;
+    while i < bit_width {
+        mod_inverse = mod_inverse.wrapping_mul(mod_inverse).wrapping_mul(A);
+        i += 1;
+    }
+    mod_inverse
+}
+
+pub(crate) struct DivisibilityCheck<const A: u32, const N: usize>;
+
+#[derive(Copy, Clone)]
+pub(crate) struct Entry {
+    pub mod_inv: u32,
+    pub max_quotient: u32,
+}
+
+impl<const A: u32, const N: usize> DivisibilityCheck<A, N> {
+    pub(crate) const TABLE: [Entry; N] = {
+        assert!(A % 2 != 0);
+        assert!(N > 0);
+
+        let mod_inverse = modular_inverse::<A>();
+        let mut table = [Entry {
+            mod_inv: 0,
+            max_quotient: 0,
+        }; N];
+        let mut pow_of_mod_inverse = 1;
+        let mut pow_of_a = 1;
+        let mut i = 0;
+        while i < N {
+            table[i].mod_inv = pow_of_mod_inverse;
+            table[i].max_quotient = u32::MAX / pow_of_a;
+
+            pow_of_mod_inverse = pow_of_mod_inverse.wrapping_mul(mod_inverse);
+            pow_of_a *= A;
+            i += 1;
+        }
+        table
+    };
+}
+
 // Replace n by floor(n / 10^N).
 // Returns true if and only if n is divisible by 10^N.
 // Precondition: n <= 10^(N+1)

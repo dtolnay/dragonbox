@@ -79,6 +79,7 @@ mod wuint;
 
 use crate::buffer::Sealed;
 use crate::cache::EntryTypeExt as _;
+use crate::div::DivisibilityCheck;
 use core::mem::MaybeUninit;
 
 /// Buffer correctly sized to hold the text representation of any floating point
@@ -313,6 +314,7 @@ fn compute_nearest_normal(
         }
         ret_value.exponent = minus_k + KAPPA as i32 + 1;
 
+        policy::on_trailing_zeros(&mut ret_value);
         return ret_value;
     }
 
@@ -385,6 +387,7 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     // If succeed, remove trailing zeros if necessary and return.
     if ret_value.significand * 10 >= xi {
         ret_value.exponent = minus_k + 1;
+        policy::on_trailing_zeros(&mut ret_value);
         return ret_value;
     }
 
@@ -408,6 +411,92 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
         ret_value.significand += 1;
     }
     ret_value
+}
+
+fn remove_trailing_zeros(n: &mut CarrierUint) -> i32 {
+    const MAX_POWER: i32 = {
+        const MAX_POSSIBLE_SIGNIFICAND: u64 =
+            CarrierUint::MAX / compute_power32::<{ KAPPA + 1 }>(10) as u64;
+
+        let mut k = 0;
+        let mut p = 1;
+        while p < MAX_POSSIBLE_SIGNIFICAND / 10 {
+            p *= 10;
+            k += 1;
+        }
+        k
+    };
+
+    const {
+        assert!(MAX_POWER == 16, "Assertion failed! Did you change kappa?");
+    }
+
+    // Divide by 10^8 and reduce to 32-bits.
+    // Since ret_value.significand <= (2^64 - 1) / 1000 < 10^17, both of the
+    // quotient and the r should fit in 32-bits.
+
+    let divtable32 = &DivisibilityCheck::<5, 9>::TABLE;
+
+    // If the number is divisible by 1_0000_0000, work with the quotient.
+    let quotient_by_pow10_8 = div::divide_by_pow10::<8, 54, 0>(*n) as u32;
+    let mut remainder = (*n - u64::from(1_0000_0000u32.wrapping_mul(quotient_by_pow10_8))) as u32;
+
+    if remainder == 0 {
+        let mut n32 = quotient_by_pow10_8;
+
+        // Is n divisible by 10^8?
+        // This branch is extremely unlikely.
+        // I suspect it is impossible to get into this branch.
+        if n32 % 1_0000_0000 == 0 {
+            *n = u64::from(n32 / 1_0000_0000);
+            return 16;
+        }
+
+        // Otherwise, perform a binary search.
+        let mut s = 8i32;
+
+        if n32 % 1_0000 == 0 {
+            n32 /= 1_0000;
+            s |= 0x4;
+        }
+        if n32 % 100 == 0 {
+            n32 /= 100;
+            s |= 0x2;
+        }
+        if n32 % 10 == 0 {
+            n32 /= 10;
+            s |= 0x1;
+        }
+
+        *n = u64::from(n32);
+        return s;
+    }
+
+    // If the number is not divisible by 1'0000'0000, work with the remainder.
+
+    // Perform a binary search.
+    let mut multiplier = 1_0000_0000u32;
+    let mut s = 0i32;
+
+    if remainder % 1_0000 == 0 {
+        remainder /= 1_0000;
+        multiplier = 1_0000;
+        s |= 0x4;
+    }
+    if remainder % 100 == 0 {
+        remainder /= 100;
+        multiplier = (multiplier >> 2).wrapping_mul(divtable32[2].mod_inv);
+        s |= 0x2;
+    }
+    if remainder % 10 == 0 {
+        remainder /= 10;
+        multiplier = (multiplier >> 1).wrapping_mul(divtable32[1].mod_inv);
+        s |= 0x1;
+    }
+
+    *n = CarrierUint::from(remainder)
+        + CarrierUint::from(quotient_by_pow10_8) * CarrierUint::from(multiplier);
+    s
 }
 
 struct ComputeMulResult {
