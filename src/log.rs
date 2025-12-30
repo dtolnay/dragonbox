@@ -22,6 +22,10 @@
 // Utilities for fast/constexpr log computation.
 ////////////////////////////////////////////////////////////////////////////////////////
 
+const _: () = {
+    assert!((-1 >> 1) == -1); // right-shift for signed integers must be arithmetic
+};
+
 const fn floor_shift(integer_part: u32, fractional_digits: u64, shift_amount: usize) -> i32 {
     //debug_assert!(shift_amount < 32);
     // Ensure no overflow
