@@ -10,7 +10,7 @@ exclude = ["performance.png", "chart/**"]
 keywords = ["float"]
 license = "Apache-2.0 WITH LLVM-exception OR BSL-1.0"
 repository = "https://github.com/dtolnay/dragonbox"
-rust-version = "1.73"
+rust-version = "1.79"
 
 [dev-dependencies]
 rand = "0.9"
