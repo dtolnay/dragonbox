@@ -9,7 +9,7 @@ This crate contains a basic port of
 [https://github.com/jk-jeon/dragonbox][upstream] to Rust for benchmarking
 purposes.
 
-[upstream]: https://github.com/jk-jeon/dragonbox/tree/11aae947498536b54470c52ef5511fff4c4be62a
+[upstream]: https://github.com/jk-jeon/dragonbox/tree/ac5788dab176f78a322644b235302cb03ed84f7a
 
 Please see the upstream repo for an explanation of the approach and comparison
 to the Ryū algorithm.
