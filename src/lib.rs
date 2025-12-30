@@ -212,6 +212,9 @@ struct Decimal {
 }
 
 const KAPPA: u32 = 2;
+const _: () = assert!(
+    CARRIER_BITS as i32 >= SIGNIFICAND_BITS as i32 + 2 + log::floor_log2_pow10(KAPPA as i32 + 1),
+);
 
 const MAX_POWER_OF_FACTOR_OF_5: i32 = log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2);
 const DIVISIBILITY_CHECK_BY_5_THRESHOLD: i32 =
