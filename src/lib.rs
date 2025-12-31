@@ -275,15 +275,15 @@ fn compute_nearest_normal(
     let mut r = (zi - u64::from(BIG_DIVISOR) * ret_value.significand) as u32;
 
     'small_divisor_case_label: loop {
-        if r > deltai {
-            break 'small_divisor_case_label;
-        } else if r < deltai {
+        if r < deltai {
             // Exclude the right endpoint if necessary.
             if r == 0 && is_z_integer && !has_even_significand_bits {
                 ret_value.significand -= 1;
                 r = BIG_DIVISOR;
                 break 'small_divisor_case_label;
             }
+        } else if r > deltai {
+            break 'small_divisor_case_label;
         } else {
             // r == deltai; compare fractional parts.
             let two_fl = two_fc - 1;
