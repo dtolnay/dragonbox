@@ -74,6 +74,7 @@ static RADIX_100_TABLE: [u8; 200] = [
 // floor(10^2 * ((10^0 * y) mod 2^32) / 2^32) = 23,
 // floor(10^2 * ((10^2 * y) mod 2^32) / 2^32) = 45, and
 // floor(10^2 * ((10^4 * y) mod 2^32) / 2^32) = 67.
+// See https://jk-jeon.github.io/posts/2022/02/jeaiii-algorithm/ for more explanation.
 
 unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
     if s32 < 100 {
