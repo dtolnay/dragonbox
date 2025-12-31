@@ -277,7 +277,7 @@ fn compute_nearest_normal(
     'small_divisor_case_label: loop {
         if r < deltai {
             // Exclude the right endpoint if necessary.
-            if r == 0 && is_z_integer && !has_even_significand_bits {
+            if r == 0 && (is_z_integer & !has_even_significand_bits) {
                 ret_value.significand -= 1;
                 r = BIG_DIVISOR;
                 break 'small_divisor_case_label;
@@ -286,28 +286,13 @@ fn compute_nearest_normal(
             break 'small_divisor_case_label;
         } else {
             // r == deltai; compare fractional parts.
-            let two_fl = two_fc - 1;
+            let ComputeMulParityResult {
+                parity: xi_parity,
+                is_integer: x_is_integer,
+            } = compute_mul_parity(two_fc - 1, &cache, beta);
 
-            if !has_even_significand_bits
-                || !(CASE_FC_PM_HALF_LOWER_THRESHOLD..=DIVISIBILITY_CHECK_BY_5_THRESHOLD)
-                    .contains(&exponent)
-            {
-                // If the left endpoint is not included, the condition for
-                // success is z^(f) < delta^(f) (odd parity). Otherwise, the
-                // inequalities on exponent ensure that x is not an integer, so
-                // if z^(f) >= delta^(f) (even parity), we in fact have strict
-                // inequality.
-                if !compute_mul_parity(two_fl, &cache, beta).parity {
-                    break 'small_divisor_case_label;
-                }
-            } else {
-                let ComputeMulParityResult {
-                    parity: xi_parity,
-                    is_integer: is_x_integer,
-                } = compute_mul_parity(two_fl, &cache, beta);
-                if !xi_parity && !is_x_integer {
-                    break 'small_divisor_case_label;
-                }
+            if !(xi_parity | (x_is_integer & has_even_significand_bits)) {
+                break 'small_divisor_case_label;
             }
         }
         ret_value.exponent = minus_k + KAPPA as i32 + 1;
@@ -349,7 +334,7 @@ fn compute_nearest_normal(
             // If z^(f) >= epsilon^(f), we might have a tie
             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
             // For tie-to-up case, we can just choose the upper one.
-            if policy::prefer_round_down(&ret_value) && is_y_integer {
+            if policy::prefer_round_down(&ret_value) & is_y_integer {
                 ret_value.significand -= 1;
             }
         }
