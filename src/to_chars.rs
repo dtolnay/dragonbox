@@ -67,6 +67,13 @@ static RADIX_100_TABLE: [u8; 200] = [
 
 // These digit generation routines are inspired by James Anhalt's itoa
 // algorithm: https://github.com/jeaiii/itoa
+// The main idea is for given n, find y such that floor(10^k * y / 2^32) = n
+// holds, where k is an appropriate integer depending on the length of n. For
+// example, if n = 1234567, we set k = 6. In this case, we have
+// floor(y / 2^32) = 1,
+// floor(10^2 * (y mod 2^32) / 2^32) = 23,
+// floor(10^2 * (10^2 * y mod 2^32) / 2^32) = 45, and
+// floor(10^2 * (10^4 * y mod 2^32) / 2^32) = 67.
 
 unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut u8) -> *mut u8 {
     let first_block: u32;
@@ -169,30 +176,29 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 buffer,
                 2,
             );
-            buffer = buffer.add(2);
             ptr::copy_nonoverlapping(
                 RADIX_100_TABLE
                     .as_ptr()
                     .add((third_two_digits * 2) as usize),
-                buffer,
+                buffer.add(2),
                 2,
             );
-            buffer = buffer.add(2);
+            buffer = buffer.add(4);
         }
     } else if first_block < 1_0000_0000 {
-        // 140737489 = ceil(2^47 / 100_0000)
-        const MASK: u64 = u64::MAX >> (64 - 47);
-        let mut prod = u64::from(first_block) * 140737489;
-        let first_two_digits = (prod >> 47) as u32;
+        // 281474978 = ceil(2^48 / 100_0000) + 1
+        let mut prod = u64::from(first_block) * 281474978;
+        prod >>= 16;
+        let first_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let second_two_digits = (prod >> 47) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let second_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let third_two_digits = (prod >> 47) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let third_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let fourth_two_digits = (prod >> 47) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let fourth_two_digits = (prod >> 32) as u32;
 
         if first_two_digits < 10 {
             // 7 digits.
@@ -216,43 +222,41 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
             buffer,
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((third_two_digits * 2) as usize),
-            buffer,
+            buffer.add(2),
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((fourth_two_digits * 2) as usize),
-            buffer,
+            buffer.add(4),
             2,
         );
-        buffer = buffer.add(2);
+        buffer = buffer.add(6);
     } else {
         // 9 digits.
-        // 1441151881 = ceil(2^57 / 1_0000_0000)
-        const MASK: u64 = u64::MAX >> (64 - 57);
-        let mut prod = u64::from(first_block) * 1441151881;
-        let first_digit = (prod >> 57) as u8;
+        // 2882303763 = ceil(2^58 / 1_0000_0000) + 1
+        let mut prod = u64::from(first_block) * 2882303763;
+        prod >>= 26;
+        let first_digit = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let second_two_digits = (prod >> 57) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let second_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let third_two_digits = (prod >> 57) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let third_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let fourth_two_digits = (prod >> 57) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let fourth_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let fifth_two_digits = (prod >> 57) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let fifth_two_digits = (prod >> 32) as u32;
 
-        *buffer = b'0' + first_digit;
+        *buffer = b'0' + first_digit as u8;
         *buffer.add(1) = b'.';
         buffer = buffer.add(2);
         exponent += 8;
@@ -264,48 +268,46 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
             buffer,
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((third_two_digits * 2) as usize),
-            buffer,
+            buffer.add(2),
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((fourth_two_digits * 2) as usize),
-            buffer,
+            buffer.add(4),
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((fifth_two_digits * 2) as usize),
-            buffer,
+            buffer.add(6),
             2,
         );
-        buffer = buffer.add(2);
+        buffer = buffer.add(8);
     }
 
     // Print second block if necessary.
     if have_second_block {
-        // 140737489 = ceil(2^47 / 100_0000)
-        const MASK: u64 = u64::MAX >> (64 - 47);
-        let mut prod = u64::from(second_block) * 140737489;
-        let first_two_digits = (prod >> 47) as u32;
+        // 281474978 = ceil(2^48 / 100_0000) + 1
+        let mut prod = u64::from(second_block) * 281474978;
+        prod >>= 16;
+        prod += 1;
+        let first_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let second_two_digits = (prod >> 47) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let second_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let third_two_digits = (prod >> 47) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let third_two_digits = (prod >> 32) as u32;
 
-        prod = (prod & MASK) * 100;
-        let fourth_two_digits = (prod >> 47) as u32;
+        prod = u64::from(prod as u32) * 100;
+        let fourth_two_digits = (prod >> 32) as u32;
 
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
@@ -314,31 +316,28 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
             buffer,
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((second_two_digits * 2) as usize),
-            buffer,
+            buffer.add(2),
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((third_two_digits * 2) as usize),
-            buffer,
+            buffer.add(4),
             2,
         );
-        buffer = buffer.add(2);
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE
                 .as_ptr()
                 .add((fourth_two_digits * 2) as usize),
-            buffer,
+            buffer.add(6),
             2,
         );
-        buffer = buffer.add(2);
+        buffer = buffer.add(8);
 
         exponent += 8;
     }
