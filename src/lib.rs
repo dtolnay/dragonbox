@@ -62,6 +62,7 @@
     clippy::if_not_else,
     clippy::items_after_statements,
     clippy::must_use_candidate,
+    clippy::needless_bitwise_bool,
     clippy::needless_doctest_main,
     clippy::never_loop,
     clippy::similar_names,
