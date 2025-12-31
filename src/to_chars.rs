@@ -253,8 +253,8 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
         // 6554 = ceil(2^16 / 10)
         let mut prod = exponent as u32 * 6554;
         let d1 = prod >> 16;
-        prod = u32::from(prod as u16) * 10;
-        let d2 = prod >> 16;
+        prod = u32::from(prod as u16) * 5; // * 10
+        let d2 = prod >> 15; // >> 16
         ptr::copy_nonoverlapping(RADIX_100_TABLE.as_ptr().add((d1 * 2) as usize), buffer, 2);
         *buffer.add(2) = b'0' + d2 as u8;
         buffer = buffer.add(3);
