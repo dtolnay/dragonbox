@@ -157,7 +157,9 @@ const fn has_even_significand_bits(s: CarrierUint) -> bool {
 }
 
 const fn compute_power32<const K: u32>(a: u32) -> u32 {
-    // assert!(k >= 0);
+    const {
+        assert!(K >= 0);
+    }
     let mut p = 1;
     let mut i = 0;
     while i < K {
@@ -168,7 +170,9 @@ const fn compute_power32<const K: u32>(a: u32) -> u32 {
 }
 
 const fn compute_power64<const K: u32>(a: u64) -> u64 {
-    // assert!(k >= 0);
+    const {
+        assert!(K >= 0);
+    }
     let mut p = 1;
     let mut i = 0;
     while i < K {
@@ -179,7 +183,9 @@ const fn compute_power64<const K: u32>(a: u64) -> u64 {
 }
 
 const fn count_factors<const A: usize>(mut n: usize) -> u32 {
-    // assert!(a > 1);
+    const {
+        assert!(A > 1);
+    }
     let mut c = 0;
     while n % A == 0 {
         n /= A;
