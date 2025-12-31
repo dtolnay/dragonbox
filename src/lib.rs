@@ -239,11 +239,11 @@ fn compute_nearest_normal(
     // Compute k and beta.
     let minus_k = log::floor_log10_pow2(exponent) - KAPPA as i32;
     let cache = unsafe { cache::get(-minus_k) };
-    let beta_minus_1 = exponent + log::floor_log2_pow10(-minus_k);
+    let beta = exponent + log::floor_log2_pow10(-minus_k);
 
     // Compute zi and deltai.
     // 10^kappa <= deltai < 10^(kappa + 1)
-    let deltai = compute_delta(&cache, beta_minus_1);
+    let deltai = compute_delta(&cache, beta);
     // For the case of binary32, the result of integer check is not correct for
     // 29711844 * 2^-82
     // = 6.1442653300000000008655037797566933477355632930994033813476... * 10^-18
@@ -257,7 +257,7 @@ fn compute_nearest_normal(
     let ComputeMulResult {
         result: zi,
         is_integer: is_z_integer,
-    } = compute_mul((two_fc | 1) << beta_minus_1, &cache);
+    } = compute_mul((two_fc | 1) << beta, &cache);
 
     //////////////////////////////////////////////////////////////////////
     // Step 2: Try larger divisor; remove trailing zeros if necessary
@@ -297,14 +297,14 @@ fn compute_nearest_normal(
                 // inequalities on exponent ensure that x is not an integer, so
                 // if z^(f) >= delta^(f) (even parity), we in fact have strict
                 // inequality.
-                if !compute_mul_parity(two_fl, &cache, beta_minus_1).parity {
+                if !compute_mul_parity(two_fl, &cache, beta).parity {
                     break 'small_divisor_case_label;
                 }
             } else {
                 let ComputeMulParityResult {
                     parity: xi_parity,
                     is_integer: is_x_integer,
-                } = compute_mul_parity(two_fl, &cache, beta_minus_1);
+                } = compute_mul_parity(two_fl, &cache, beta);
                 if !xi_parity && !is_x_integer {
                     break 'small_divisor_case_label;
                 }
@@ -342,7 +342,7 @@ fn compute_nearest_normal(
         let ComputeMulParityResult {
             parity: yi_parity,
             is_integer: is_y_integer,
-        } = compute_mul_parity(two_fc, &cache, beta_minus_1);
+        } = compute_mul_parity(two_fc, &cache, beta);
         if yi_parity != approx_y_parity {
             ret_value.significand -= 1;
         } else {
@@ -366,13 +366,13 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
 
     // Compute k and beta.
     let minus_k = log::floor_log10_pow2_minus_log10_4_over_3(exponent);
-    let beta_minus_1 = exponent + log::floor_log2_pow10(-minus_k);
+    let beta = exponent + log::floor_log2_pow10(-minus_k);
 
     // Compute xi and zi.
     let cache = unsafe { cache::get(-minus_k) };
 
-    let mut xi = compute_left_endpoint_for_shorter_interval_case(&cache, beta_minus_1);
-    let zi = compute_right_endpoint_for_shorter_interval_case(&cache, beta_minus_1);
+    let mut xi = compute_left_endpoint_for_shorter_interval_case(&cache, beta);
+    let zi = compute_right_endpoint_for_shorter_interval_case(&cache, beta);
 
     // If the left endpoint is not an integer, increase it.
     if !is_left_endpoint_integer_shorter_interval(exponent) {
@@ -390,7 +390,7 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     }
 
     // Otherwise, compute the round-up of y.
-    ret_value.significand = compute_round_up_for_shorter_interval_case(&cache, beta_minus_1);
+    ret_value.significand = compute_round_up_for_shorter_interval_case(&cache, beta);
     ret_value.exponent = minus_k;
 
     // When tie occurs, choose one of them according to the rule.
@@ -486,8 +486,8 @@ fn compute_mul(u: CarrierUint, cache: &cache::EntryType) -> ComputeMulResult {
     }
 }
 
-fn compute_delta(cache: &cache::EntryType, beta_minus_1: i32) -> u32 {
-    (cache.high() >> ((CARRIER_BITS - 1) as i32 - beta_minus_1)) as u32
+fn compute_delta(cache: &cache::EntryType, beta: i32) -> u32 {
+    (cache.high() >> ((CARRIER_BITS - 1) as i32 - beta)) as u32
 }
 
 struct ComputeMulParityResult {
@@ -498,39 +498,36 @@ struct ComputeMulParityResult {
 fn compute_mul_parity(
     two_f: CarrierUint,
     cache: &cache::EntryType,
-    beta_minus_1: i32,
+    beta: i32,
 ) -> ComputeMulParityResult {
-    debug_assert!(beta_minus_1 >= 1);
-    debug_assert!(beta_minus_1 < 64);
+    debug_assert!(beta >= 1);
+    debug_assert!(beta < 64);
 
     let r = wuint::umul192_lower128(two_f, *cache);
     ComputeMulParityResult {
-        parity: ((r.high() >> (64 - beta_minus_1)) & 1) != 0,
-        is_integer: ((r.high() << beta_minus_1) | (r.low() >> (64 - beta_minus_1))) == 0,
+        parity: ((r.high() >> (64 - beta)) & 1) != 0,
+        is_integer: ((r.high() << beta) | (r.low() >> (64 - beta))) == 0,
     }
 }
 
 fn compute_left_endpoint_for_shorter_interval_case(
     cache: &cache::EntryType,
-    beta_minus_1: i32,
+    beta: i32,
 ) -> CarrierUint {
     (cache.high() - (cache.high() >> (SIGNIFICAND_BITS + 2)))
-        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta_minus_1)
+        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta)
 }
 
 fn compute_right_endpoint_for_shorter_interval_case(
     cache: &cache::EntryType,
-    beta_minus_1: i32,
+    beta: i32,
 ) -> CarrierUint {
     (cache.high() + (cache.high() >> (SIGNIFICAND_BITS + 2)))
-        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta_minus_1)
+        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta)
 }
 
-fn compute_round_up_for_shorter_interval_case(
-    cache: &cache::EntryType,
-    beta_minus_1: i32,
-) -> CarrierUint {
-    (cache.high() >> ((CARRIER_BITS - SIGNIFICAND_BITS - 2) as i32 - beta_minus_1)).div_ceil(2)
+fn compute_round_up_for_shorter_interval_case(cache: &cache::EntryType, beta: i32) -> CarrierUint {
+    (cache.high() >> ((CARRIER_BITS - SIGNIFICAND_BITS - 2) as i32 - beta)).div_ceil(2)
 }
 
 const fn floor_log2(mut n: u64) -> i32 {
