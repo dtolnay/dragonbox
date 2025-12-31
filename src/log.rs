@@ -25,9 +25,9 @@
 const _: () = assert!((-1 >> 1) == -1); // right-shift for signed integers must be arithmetic
 
 const fn floor_shift(integer_part: u32, fractional_digits: u64, shift_amount: usize) -> i32 {
-    //debug_assert!(shift_amount < 32);
+    debug_assert!(shift_amount < 32);
     // Ensure no overflow
-    //debug_assert!(shift_amount == 0 || integer_part < (1 << (32 - shift_amount)));
+    debug_assert!(shift_amount == 0 || integer_part < (1 << (32 - shift_amount)));
 
     if shift_amount == 0 {
         integer_part as i32
@@ -47,7 +47,7 @@ const fn compute<
 >(
     e: i32,
 ) -> i32 {
-    //debug_assert!(e <= MAX_EXPONENT && e >= -MAX_EXPONENT);
+    debug_assert!(e <= MAX_EXPONENT && e >= -MAX_EXPONENT);
     let c = floor_shift(C_INTEGER_PART, C_FRACTIONAL_DIGITS, SHIFT_AMOUNT);
     let s = floor_shift(S_INTEGER_PART, S_FRACTIONAL_DIGITS, SHIFT_AMOUNT);
     (e * c - s) >> SHIFT_AMOUNT
