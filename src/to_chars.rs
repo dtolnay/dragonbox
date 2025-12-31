@@ -407,6 +407,8 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 2,
             );
 
+            // The second block is of 8 digits.
+            // 281474978 = ceil(2^48 / 100'0000) + 1
             prod = u64::from(second_block) * 281474978;
             prod >>= 16;
             prod += 1;
