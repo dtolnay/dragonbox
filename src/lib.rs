@@ -79,7 +79,6 @@ mod wuint;
 
 use crate::buffer::Sealed;
 use crate::cache::EntryTypeExt as _;
-use crate::div::DivisibilityCheck;
 use core::mem::MaybeUninit;
 
 /// Buffer correctly sized to hold the text representation of any floating point
@@ -271,8 +270,7 @@ fn compute_nearest_normal(
     // better than the compiler; we are computing zi / big_divisor here.
     ret_value.significand = div::divide_by_pow10::<
         { KAPPA + 1 },
-        { SIGNIFICAND_BITS as i32 + KAPPA as i32 + 2 },
-        { KAPPA as i32 + 1 },
+        { (1 << (SIGNIFICAND_BITS + 1)) * BIG_DIVISOR as u64 - 1 },
     >(zi);
     let mut r = (zi - u64::from(BIG_DIVISOR) * ret_value.significand) as u32;
 
@@ -414,88 +412,64 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
 }
 
 fn remove_trailing_zeros(n: &mut CarrierUint) -> i32 {
-    const MAX_POWER: i32 = {
-        const MAX_POSSIBLE_SIGNIFICAND: u64 =
-            CarrierUint::MAX / compute_power32::<{ KAPPA + 1 }>(10) as u64;
+    debug_assert!(*n != 0);
 
-        let mut k = 0;
-        let mut p = 1;
-        while p < MAX_POSSIBLE_SIGNIFICAND / 10 {
-            p *= 10;
-            k += 1;
+    // Divide by 10^8 and reduce to 32-bits if divisible.
+    // Since ret_value.significand <= (2^53 * 1000 - 1) / 1000 < 10^16,
+    // n is at most of 16 digits.
+
+    // This magic number is ceil(2^90 / 10^8).
+    const MAGIC_NUMBER: u64 = 12379400392853802749;
+    let nm = wuint::umul128(*n, MAGIC_NUMBER);
+
+    // Is n is divisible by 10^8?
+    if (nm.high() & ((1 << (90 - 64)) - 1)) == 0 && nm.low() < MAGIC_NUMBER {
+        // If yes, work with the quotient.
+        let mut n32 = (nm.high() >> (90 - 64)) as u32;
+
+        const MOD_INV_5: u32 = 0xcccc_cccd;
+        const MOD_INV_25: u32 = MOD_INV_5.wrapping_mul(MOD_INV_5);
+
+        let mut s = 8;
+        loop {
+            let q = n32.wrapping_mul(MOD_INV_25).rotate_right(2);
+            if q <= u32::MAX / 100 {
+                n32 = q;
+                s += 2;
+            } else {
+                break;
+            }
         }
-        k
-    };
-
-    const {
-        assert!(MAX_POWER == 16, "Assertion failed! Did you change kappa?");
-    }
-
-    // Divide by 10^8 and reduce to 32-bits.
-    // Since ret_value.significand <= (2^64 - 1) / 1000 < 10^17, both of the
-    // quotient and the r should fit in 32-bits.
-
-    let divtable32 = &DivisibilityCheck::<5, 9>::TABLE;
-
-    // If the number is divisible by 1_0000_0000, work with the quotient.
-    let quotient_by_pow10_8 = div::divide_by_pow10::<8, 54, 0>(*n) as u32;
-    let mut remainder = (*n - u64::from(1_0000_0000u32.wrapping_mul(quotient_by_pow10_8))) as u32;
-
-    if remainder == 0 {
-        let mut n32 = quotient_by_pow10_8;
-
-        // Is n divisible by 10^8?
-        // This branch is extremely unlikely.
-        // I suspect it is impossible to get into this branch.
-        if n32 % 1_0000_0000 == 0 {
-            *n = u64::from(n32 / 1_0000_0000);
-            return 16;
-        }
-
-        // Otherwise, perform a binary search.
-        let mut s = 8i32;
-
-        if n32 % 1_0000 == 0 {
-            n32 /= 1_0000;
-            s |= 0x4;
-        }
-        if n32 % 100 == 0 {
-            n32 /= 100;
-            s |= 0x2;
-        }
-        if n32 % 10 == 0 {
-            n32 /= 10;
-            s |= 0x1;
+        let q = n32.wrapping_mul(MOD_INV_5).rotate_right(1);
+        if q <= u32::MAX / 10 {
+            n32 = q;
+            s |= 1;
         }
 
         *n = u64::from(n32);
         return s;
     }
 
-    // If the number is not divisible by 1'0000'0000, work with the remainder.
+    // If n is not divisible by 10^8, work with n itself.
+    const MOD_INV_5: u64 = 0xcccc_cccc_cccc_cccd;
+    const MOD_INV_25: u64 = MOD_INV_5.wrapping_mul(MOD_INV_5);
 
-    // Perform a binary search.
-    let mut multiplier = 1_0000_0000u32;
-    let mut s = 0i32;
-
-    if remainder % 1_0000 == 0 {
-        remainder /= 1_0000;
-        multiplier = 1_0000;
-        s |= 0x4;
+    let mut s = 0;
+    loop {
+        let q = n.wrapping_mul(MOD_INV_25).rotate_right(2);
+        if q <= u64::MAX / 100 {
+            *n = q;
+            s += 2;
+        } else {
+            break;
+        }
     }
-    if remainder % 100 == 0 {
-        remainder /= 100;
-        multiplier = (multiplier >> 2).wrapping_mul(divtable32[2].mod_inv);
-        s |= 0x2;
-    }
-    if remainder % 10 == 0 {
-        remainder /= 10;
-        multiplier = (multiplier >> 1).wrapping_mul(divtable32[1].mod_inv);
-        s |= 0x1;
+    let q = n.wrapping_mul(MOD_INV_5).rotate_right(1);
+    if q <= u64::MAX / 10 {
+        *n = q;
+        s |= 1;
     }
 
-    *n = CarrierUint::from(remainder)
-        + CarrierUint::from(quotient_by_pow10_8) * CarrierUint::from(multiplier);
     s
 }
 

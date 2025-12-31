@@ -24,102 +24,64 @@
 
 const _: () = assert!((-1 >> 1) == -1); // right-shift for signed integers must be arithmetic
 
-const fn floor_shift(integer_part: u32, fractional_digits: u64, shift_amount: usize) -> i32 {
-    debug_assert!(shift_amount < 32);
-    // Ensure no overflow
-    debug_assert!(shift_amount == 0 || integer_part < (1 << (32 - shift_amount)));
-
-    if shift_amount == 0 {
-        integer_part as i32
-    } else {
-        ((integer_part << shift_amount) | (fractional_digits >> (64 - shift_amount)) as u32) as i32
-    }
-}
-
 // Compute floor(e * c - s).
+type Multiply = u32;
+type Subtract = u32;
+type Shift = usize;
+type MinExponent = i32;
+type MaxExponent = i32;
+
 const fn compute<
-    const C_INTEGER_PART: u32,
-    const C_FRACTIONAL_DIGITS: u64,
-    const SHIFT_AMOUNT: usize,
-    const MAX_EXPONENT: i32,
-    const S_INTEGER_PART: u32,
-    const S_FRACTIONAL_DIGITS: u64,
+    const M: Multiply,
+    const F: Subtract,
+    const K: Shift,
+    const E_MIN: MinExponent,
+    const E_MAX: MaxExponent,
 >(
     e: i32,
 ) -> i32 {
-    debug_assert!(e <= MAX_EXPONENT && e >= -MAX_EXPONENT);
-    let c = floor_shift(C_INTEGER_PART, C_FRACTIONAL_DIGITS, SHIFT_AMOUNT);
-    let s = floor_shift(S_INTEGER_PART, S_FRACTIONAL_DIGITS, SHIFT_AMOUNT);
-    (e * c - s) >> SHIFT_AMOUNT
+    debug_assert!(E_MIN <= e && e <= E_MAX);
+    (e * M as i32 - F as i32) >> K
 }
 
-const LOG10_2_FRACTIONAL_DIGITS: u64 = 0x4d10_4d42_7de7_fbcc;
-const LOG10_4_OVER_3_FRACTIONAL_DIGITS: u64 = 0x1ffb_fc2b_bc78_0375;
-const FLOOR_LOG10_POW2_SHIFT_AMOUNT: usize = 22;
-const FLOOR_LOG10_POW2_INPUT_LIMIT: i32 = 1700;
-const FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_INPUT_LIMIT: i32 = 1700;
-
-const LOG2_10_FRACTIONAL_DIGITS: u64 = 0x5269_e12f_346e_2bf9;
-const FLOOR_LOG2_POW10_SHIFT_AMOUNT: usize = 19;
-const FLOOR_LOG2_POW10_INPUT_LIMIT: i32 = 1233;
-
-const LOG5_2_FRACTIONAL_DIGITS: u64 = 0x6e40_d1a4_143d_cb94;
-const LOG5_3_FRACTIONAL_DIGITS: u64 = 0xaebf_4791_5d44_3b24;
-const FLOOR_LOG5_POW2_SHIFT_AMOUNT: usize = 20;
-const FLOOR_LOG5_POW2_INPUT_LIMIT: i32 = 1492;
-const FLOOR_LOG5_POW2_MINUS_LOG5_3_INPUT_LIMIT: i32 = 2427;
-
+const FLOOR_LOG10_POW2_MIN_EXPONENT: i32 = -2620;
+const FLOOR_LOG10_POW2_MAX_EXPONENT: i32 = 2620;
 pub(crate) const fn floor_log10_pow2(e: i32) -> i32 {
-    compute::<
-        0,
-        LOG10_2_FRACTIONAL_DIGITS,
-        FLOOR_LOG10_POW2_SHIFT_AMOUNT,
-        FLOOR_LOG10_POW2_INPUT_LIMIT,
-        0,
-        0,
-    >(e)
+    compute::<315653, 0, 20, FLOOR_LOG10_POW2_MIN_EXPONENT, FLOOR_LOG10_POW2_MAX_EXPONENT>(e)
 }
 
+const FLOOR_LOG2_POW10_MIN_EXPONENT: i32 = -1233;
+const FLOOR_LOG2_POW10_MAX_EXPONENT: i32 = 1233;
 pub(crate) const fn floor_log2_pow10(e: i32) -> i32 {
-    compute::<
-        3,
-        LOG2_10_FRACTIONAL_DIGITS,
-        FLOOR_LOG2_POW10_SHIFT_AMOUNT,
-        FLOOR_LOG2_POW10_INPUT_LIMIT,
-        0,
-        0,
-    >(e)
+    compute::<1741647, 0, 19, FLOOR_LOG2_POW10_MIN_EXPONENT, FLOOR_LOG2_POW10_MAX_EXPONENT>(e)
 }
 
-pub(crate) const fn floor_log5_pow2(e: i32) -> i32 {
-    compute::<
-        0,
-        LOG5_2_FRACTIONAL_DIGITS,
-        FLOOR_LOG5_POW2_SHIFT_AMOUNT,
-        FLOOR_LOG5_POW2_INPUT_LIMIT,
-        0,
-        0,
-    >(e)
-}
-
-pub(crate) const fn floor_log5_pow2_minus_log5_3(e: i32) -> i32 {
-    compute::<
-        0,
-        LOG5_2_FRACTIONAL_DIGITS,
-        FLOOR_LOG5_POW2_SHIFT_AMOUNT,
-        FLOOR_LOG5_POW2_MINUS_LOG5_3_INPUT_LIMIT,
-        0,
-        LOG5_3_FRACTIONAL_DIGITS,
-    >(e)
-}
-
+const FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MIN_EXPONENT: i32 = -2985;
+const FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MAX_EXPONENT: i32 = 2936;
 pub(crate) const fn floor_log10_pow2_minus_log10_4_over_3(e: i32) -> i32 {
     compute::<
-        0,
-        LOG10_2_FRACTIONAL_DIGITS,
-        FLOOR_LOG10_POW2_SHIFT_AMOUNT,
-        FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_INPUT_LIMIT,
-        0,
-        LOG10_4_OVER_3_FRACTIONAL_DIGITS,
+        631305,
+        261663,
+        21,
+        FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MIN_EXPONENT,
+        FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MAX_EXPONENT,
+    >(e)
+}
+
+const FLOOR_LOG5_POW2_MIN_EXPONENT: i32 = -1831;
+const FLOOR_LOG5_POW2_MAX_EXPONENT: i32 = 1831;
+pub(crate) const fn floor_log5_pow2(e: i32) -> i32 {
+    compute::<225799, 0, 19, FLOOR_LOG5_POW2_MIN_EXPONENT, FLOOR_LOG5_POW2_MAX_EXPONENT>(e)
+}
+
+const FLOOR_LOG5_POW2_MINUS_LOG5_3_MIN_EXPONENT: i32 = -3543;
+const FLOOR_LOG5_POW2_MINUS_LOG5_3_MAX_EXPONENT: i32 = 2427;
+pub(crate) const fn floor_log5_pow2_minus_log5_3(e: i32) -> i32 {
+    compute::<
+        451597,
+        715764,
+        20,
+        FLOOR_LOG5_POW2_MINUS_LOG5_3_MIN_EXPONENT,
+        FLOOR_LOG5_POW2_MINUS_LOG5_3_MAX_EXPONENT,
     >(e)
 }

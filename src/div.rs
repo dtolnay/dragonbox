@@ -18,54 +18,7 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-use crate::{log, wuint};
-
-const fn modular_inverse<const A: u32>() -> u32 {
-    // By Euler's theorem, a^phi(2^n) == 1 (mod 2^n), where phi(2^n) = 2^(n-1),
-    // so the modular inverse of a is a^(2^(n-1) - 1) = a^(1 + 2 + 2^2 + ... +
-    // 2^(n-2)).
-    let bit_width = u32::BITS;
-    let mut mod_inverse = 1u32;
-    let mut i = 1;
-    while i < bit_width {
-        mod_inverse = mod_inverse.wrapping_mul(mod_inverse).wrapping_mul(A);
-        i += 1;
-    }
-    mod_inverse
-}
-
-pub(crate) struct DivisibilityCheck<const A: u32, const N: usize>;
-
-#[derive(Copy, Clone)]
-pub(crate) struct Entry {
-    pub mod_inv: u32,
-    pub max_quotient: u32,
-}
-
-impl<const A: u32, const N: usize> DivisibilityCheck<A, N> {
-    pub(crate) const TABLE: [Entry; N] = {
-        assert!(A % 2 != 0);
-        assert!(N > 0);
-
-        let mod_inverse = modular_inverse::<A>();
-        let mut table = [Entry {
-            mod_inv: 0,
-            max_quotient: 0,
-        }; N];
-        let mut pow_of_mod_inverse = 1;
-        let mut pow_of_a = 1;
-        let mut i = 0;
-        while i < N {
-            table[i].mod_inv = pow_of_mod_inverse;
-            table[i].max_quotient = u32::MAX / pow_of_a;
-
-            pow_of_mod_inverse = pow_of_mod_inverse.wrapping_mul(mod_inverse);
-            pow_of_a *= A;
-            i += 1;
-        }
-        table
-    };
-}
+use crate::wuint;
 
 // Replace n by floor(n / 10^N).
 // Returns true if and only if n is divisible by 10^N.
@@ -77,35 +30,28 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
     struct Info;
     impl Info {
         const MAGIC_NUMBER: u32 = 656;
-        const DIVISIBILITY_CHECK_BITS: i32 = 16;
+        const SHIFT_AMOUNT: i32 = 16;
     }
 
     *n *= Info::MAGIC_NUMBER;
 
     const {
-        assert!(Info::DIVISIBILITY_CHECK_BITS < 32);
+        assert!(Info::SHIFT_AMOUNT < 32);
     }
-    const MASK: u32 = (1 << Info::DIVISIBILITY_CHECK_BITS) - 1;
+    const MASK: u32 = (1 << Info::SHIFT_AMOUNT) - 1;
     let result = (*n & MASK) < Info::MAGIC_NUMBER;
 
-    *n >>= Info::DIVISIBILITY_CHECK_BITS;
+    *n >>= Info::SHIFT_AMOUNT;
     result
 }
 
 // Compute floor(n / 10^N) for small N.
-// Precondition: n <= 2^a * 5^b (a = max_pow2, b = max_pow5)
-pub(crate) fn divide_by_pow10<const N: u32, const MAX_POW2: i32, const MAX_POW5: i32>(
-    n: u64,
-) -> u64 {
-    // Ensure no overflow.
-    assert!(MAX_POW2 + (log::floor_log2_pow10(MAX_POW5) - MAX_POW5) < 64);
-
+// Precondition: n <= n_max
+pub(crate) fn divide_by_pow10<const N: u32, const N_MAX: u64>(n: u64) -> u64 {
     // Specialize for 64-bit division by 1000.
     // Ensure that the correctness condition is met.
-    if N == 3
-        && MAX_POW2 + (log::floor_log2_pow10(N as i32 + MAX_POW5) - (N as i32 + MAX_POW5)) < 70
-    {
-        wuint::umul128_upper64(n, 0x8312_6e97_8d4f_df3c) >> 9
+    if N == 3 && N_MAX <= 15534100272597517998 {
+        wuint::umul128_upper64(n, 2361183241434822607) >> 7
     } else {
         let divisor = const { crate::compute_power64::<N>(10) };
         n / divisor
