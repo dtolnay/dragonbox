@@ -216,12 +216,6 @@ const _: () = {
     assert!(max_k <= cache::MAX_K);
 };
 
-const MAX_POWER_OF_FACTOR_OF_5: i32 = log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2);
-const DIVISIBILITY_CHECK_BY_5_THRESHOLD: i32 =
-    log::floor_log2_pow10(MAX_POWER_OF_FACTOR_OF_5 + KAPPA as i32 + 1);
-
-const CASE_FC_PM_HALF_LOWER_THRESHOLD: i32 = -(KAPPA as i32) - log::floor_log5_pow2(KAPPA as i32);
-
 // The main algorithm assumes the input is a normal/subnormal finite number
 fn compute_nearest_normal(
     two_fc: CarrierUint,
