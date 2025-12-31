@@ -20,10 +20,6 @@
 
 use crate::cache::EntryTypeExt as _;
 
-pub(crate) fn umul128(x: u64, y: u64) -> u128 {
-    u128::from(x) * u128::from(y)
-}
-
 pub(crate) fn umul128_upper64(x: u64, y: u64) -> u64 {
     let p = u128::from(x) * u128::from(y);
     (p >> 64) as u64

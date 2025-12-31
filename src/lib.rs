@@ -292,7 +292,6 @@ fn compute_nearest_normal(
         }
         ret_value.exponent = minus_k + KAPPA as i32 + 1;
 
-        policy::on_trailing_zeros(&mut ret_value);
         return ret_value;
     }
 
@@ -365,7 +364,6 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     // If succeed, remove trailing zeros if necessary and return.
     if ret_value.significand * 10 >= xi {
         ret_value.exponent = minus_k + 1;
-        policy::on_trailing_zeros(&mut ret_value);
         return ret_value;
     }
 
@@ -389,68 +387,6 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
         ret_value.significand += 1;
     }
     ret_value
-}
-
-fn remove_trailing_zeros(n: &mut CarrierUint) -> i32 {
-    debug_assert!(*n != 0);
-
-    // Divide by 10^8 and reduce to 32-bits if divisible.
-    // Since ret_value.significand <= (2^53 * 1000 - 1) / 1000 < 10^16,
-    // n is at most of 16 digits.
-
-    // This magic number is ceil(2^90 / 10^8).
-    const MAGIC_NUMBER: u64 = 12379400392853802749;
-    let nm = wuint::umul128(*n, MAGIC_NUMBER);
-
-    // Is n is divisible by 10^8?
-    if (nm.high() & ((1 << (90 - 64)) - 1)) == 0 && nm.low() < MAGIC_NUMBER {
-        // If yes, work with the quotient.
-        let mut n32 = (nm.high() >> (90 - 64)) as u32;
-
-        const MOD_INV_5: u32 = 0xcccc_cccd;
-        const MOD_INV_25: u32 = MOD_INV_5.wrapping_mul(MOD_INV_5);
-
-        let mut s = 8;
-        loop {
-            let q = n32.wrapping_mul(MOD_INV_25).rotate_right(2);
-            if q <= u32::MAX / 100 {
-                n32 = q;
-                s += 2;
-            } else {
-                break;
-            }
-        }
-        let q = n32.wrapping_mul(MOD_INV_5).rotate_right(1);
-        if q <= u32::MAX / 10 {
-            n32 = q;
-            s |= 1;
-        }
-
-        *n = u64::from(n32);
-        return s;
-    }
-
-    // If n is not divisible by 10^8, work with n itself.
-    const MOD_INV_5: u64 = 0xcccc_cccc_cccc_cccd;
-    const MOD_INV_25: u64 = MOD_INV_5.wrapping_mul(MOD_INV_5);
-
-    let mut s = 0;
-    loop {
-        let q = n.wrapping_mul(MOD_INV_25).rotate_right(2);
-        if q <= u64::MAX / 100 {
-            *n = q;
-            s += 2;
-        } else {
-            break;
-        }
-    }
-    let q = n.wrapping_mul(MOD_INV_5).rotate_right(1);
-    if q <= u64::MAX / 10 {
-        *n = q;
-        s |= 1;
-    }
-
-    s
 }
 
 struct ComputeMulResult {

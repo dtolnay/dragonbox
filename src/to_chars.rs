@@ -65,6 +65,29 @@ static RADIX_100_TABLE: [u8; 200] = [
     b'9', b'5', b'9', b'6', b'9', b'7', b'9', b'8', b'9', b'9', //
 ];
 
+static RADIX_100_HEAD_TABLE: [u8; 200] = [
+    b'0', b'.', b'1', b'.', b'2', b'.', b'3', b'.', b'4', b'.', //
+    b'5', b'.', b'6', b'.', b'7', b'.', b'8', b'.', b'9', b'.', //
+    b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', //
+    b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', //
+    b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', //
+    b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', //
+    b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', //
+    b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', //
+    b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', //
+    b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', //
+    b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', //
+    b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', //
+    b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', //
+    b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', //
+    b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', //
+    b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', //
+    b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', //
+    b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', //
+    b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', //
+    b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', //
+];
+
 // These digit generation routines are inspired by James Anhalt's itoa
 // algorithm: https://github.com/jeaiii/itoa
 // The main idea is for given n, find y such that floor(10^k * y / 2^32) = n
@@ -77,226 +100,26 @@ static RADIX_100_TABLE: [u8; 200] = [
 // See https://jk-jeon.github.io/posts/2022/02/jeaiii-algorithm/ for more explanation.
 
 unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
-    if s32 < 100 {
-        if s32 < 10 {
-            // 1 digit.
-            **buffer = b'0' + s32 as u8;
-            *buffer = buffer.add(1);
-        } else {
-            // 2 digits.
-            **buffer = *RADIX_100_TABLE.get_unchecked((s32 * 2) as usize);
-            *buffer.add(1) = b'.';
-            *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((s32 * 2 + 1) as usize);
-            *buffer = buffer.add(3);
-            *exponent += 1;
-        }
-    } else {
-        if s32 < 100_0000 {
-            if s32 < 1_0000 {
-                // 3 or 4 digits.
-                // 42949673 = ceil(2^32 / 100)
-                let mut prod = u64::from(s32) * 42949673;
-                let two_digits = (prod >> 32) as u32;
-
-                if two_digits < 10 {
-                    // 3 digits.
-                    **buffer = two_digits as u8 + b'0';
-                    *buffer.add(1) = b'.';
-                    *exponent += 2;
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(2),
-                        2,
-                    );
-                    *buffer = buffer.add(4);
-                } else {
-                    // 4 digits.
-                    **buffer = *RADIX_100_TABLE.get_unchecked((two_digits * 2) as usize);
-                    *buffer.add(1) = b'.';
-                    *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
-                    *exponent += 3;
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(3),
-                        2,
-                    );
-                    *buffer = buffer.add(5);
-                }
-            } else {
-                // 5 or 6 digits.
-                // 429497 = ceil(2^32 / 1_0000)
-                let mut prod = u64::from(s32) * 429497;
-                let two_digits = (prod >> 32) as u32;
-
-                if two_digits < 10 {
-                    // 5 digits.
-                    **buffer = two_digits as u8 + b'0';
-                    *buffer.add(1) = b'.';
-                    *exponent += 4;
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(2),
-                        2,
-                    );
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(4),
-                        2,
-                    );
-                    *buffer = buffer.add(6);
-                } else {
-                    // 6 digits.
-                    **buffer = *RADIX_100_TABLE.get_unchecked((two_digits * 2) as usize);
-                    *buffer.add(1) = b'.';
-                    *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
-                    *exponent += 5;
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(3),
-                        2,
-                    );
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(5),
-                        2,
-                    );
-                    *buffer = buffer.add(7);
-                }
-            }
-        } else {
-            if s32 < 1_0000_0000 {
-                // 7 or 8 digits.
-                // 281474978 = ceil(2^48 / 100_0000) + 1
-                let mut prod = u64::from(s32) * 281474978;
-                prod >>= 16;
-                let two_digits = (prod >> 32) as u32;
-
-                if two_digits < 10 {
-                    // 7 digits.
-                    **buffer = two_digits as u8 + b'0';
-                    *buffer.add(1) = b'.';
-                    *exponent += 6;
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(2),
-                        2,
-                    );
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(4),
-                        2,
-                    );
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(6),
-                        2,
-                    );
-                    *buffer = buffer.add(8);
-                } else {
-                    // 8 digits.
-                    **buffer = *RADIX_100_TABLE.get_unchecked((two_digits * 2) as usize);
-                    *buffer.add(1) = b'.';
-                    *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
-                    *exponent += 7;
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(3),
-                        2,
-                    );
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(5),
-                        2,
-                    );
-                    prod = u64::from(prod as u32) * 100;
-                    ptr::copy_nonoverlapping(
-                        RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                        buffer.add(7),
-                        2,
-                    );
-                    *buffer = buffer.add(9);
-                }
-            } else {
-                // 9 digits.
-                // 1441151882 = ceil(2^57 / 1_0000_0000) + 1
-                let mut prod = u64::from(s32) * 1441151882;
-                prod >>= 25;
-                **buffer = (prod >> 32) as u8 + b'0';
-                *buffer.add(1) = b'.';
-                *exponent += 8;
-
-                prod = u64::from(prod as u32) * 100;
-                ptr::copy_nonoverlapping(
-                    RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                    buffer.add(2),
-                    2,
-                );
-                prod = u64::from(prod as u32) * 100;
-                ptr::copy_nonoverlapping(
-                    RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                    buffer.add(4),
-                    2,
-                );
-                prod = u64::from(prod as u32) * 100;
-                ptr::copy_nonoverlapping(
-                    RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                    buffer.add(6),
-                    2,
-                );
-                prod = u64::from(prod as u32) * 100;
-                ptr::copy_nonoverlapping(
-                    RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-                    buffer.add(8),
-                    2,
-                );
-                *buffer = buffer.add(10);
-            }
-        }
-    }
-}
-
-unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut u8) -> *mut u8 {
-    let first_block: u32;
-    let second_block: u32;
-    let have_second_block: bool;
-
-    if significand < 10_0000_0000 {
-        first_block = significand as u32;
-        second_block = 0;
-        have_second_block = false;
-    } else {
-        first_block = (significand / 1_0000_0000) as u32;
-        second_block = (significand as u32).wrapping_sub(first_block.wrapping_mul(1_0000_0000));
-        have_second_block = true;
-    }
-
-    // Print the first block of significand.
-    print_9_digits(first_block, &mut exponent, &mut buffer);
-
-    // Print second block if necessary.
-    if have_second_block {
-        // 281474978 = ceil(2^48 / 100_0000) + 1
-        let mut prod = u64::from(second_block) * 281474978;
-        prod >>= 16;
-        prod += 1;
-        exponent += 8;
-
+    // -- IEEE-754 binary32
+    // Since we do not cut trailing zeros in advance, s32 must be of 6~9 digits
+    // unless the original input was subnormal. In particular, when it is of 9
+    // digits it shouldn't have any trailing zeros.
+    // -- IEEE-754 binary64
+    // In this case, s32 must be of 7~9 digits unless the input is subnormal,
+    // and it shouldn't have any trailing zeros if it is of 9 digits.
+    if s32 >= 1_0000_0000 {
+        // 9 digits.
+        // 1441151882 = ceil(2^57 / 1_0000_0000) + 1
+        let mut prod = u64::from(s32) * 1441151882;
+        prod >>= 25;
         ptr::copy_nonoverlapping(
-            RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
-            buffer,
+            RADIX_100_HEAD_TABLE
+                .as_ptr()
+                .add(((prod >> 32) * 2) as usize),
+            *buffer,
             2,
         );
+
         prod = u64::from(prod as u32) * 100;
         ptr::copy_nonoverlapping(
             RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
@@ -315,12 +138,495 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
             buffer.add(6),
             2,
         );
-        buffer = buffer.add(8);
+        prod = u64::from(prod as u32) * 100;
+        ptr::copy_nonoverlapping(
+            RADIX_100_TABLE.as_ptr().add(((prod >> 32) * 2) as usize),
+            buffer.add(8),
+            2,
+        );
+
+        *exponent += 8;
+        *buffer = buffer.add(10);
+    } else if s32 >= 100_0000 {
+        // 7 or 8 digits.
+        // 281474978 = ceil(2^48 / 100_0000) + 1
+        let mut prod = u64::from(s32) * 281474978;
+        prod >>= 16;
+        let mut two_digits = (prod >> 32) as u32;
+        // If s32 is of 8 digits, increase the exponent by 7.
+        // Otherwise, increase it by 6.
+        *exponent += 6 + i32::from(two_digits >= 10);
+
+        // Write the first digit and the decimal point.
+        ptr::copy_nonoverlapping(
+            RADIX_100_HEAD_TABLE.as_ptr().add((two_digits * 2) as usize),
+            *buffer,
+            2,
+        );
+        // This third character may be overwritten later but we don't care.
+        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
+
+        // Remaining 6 digits are all zero?
+        if prod as u32 <= ((1u64 << 32) / 100_0000) as u32 {
+            // The number of characters actually written is:
+            //   1, if only the first digit is nonzero, which means that either s32 is of 7
+            //   digits or it is of 8 digits but the second digit is zero, or
+            //   3, otherwise.
+            // Note that buffer[2] is never zero if s32 is of 7 digits, because the input is
+            // never zero.
+            *buffer = buffer
+                .add(1 + (usize::from(two_digits >= 10) & usize::from(*buffer.add(2) > b'0')) * 2);
+        } else {
+            // At least one of the remaining 6 digits are nonzero.
+            // After this adjustment, now the first destination becomes buffer + 2.
+            *buffer = buffer.add(usize::from(two_digits >= 10));
+
+            // Obtain the next two digits.
+            prod = u64::from(prod as u32) * 100;
+            two_digits = (prod >> 32) as u32;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                buffer.add(2),
+                2,
+            );
+
+            // Remaining 4 digits are all zero?
+            if prod as u32 <= ((1u64 << 32) / 1_0000) as u32 {
+                *buffer = buffer.add(3 + usize::from(*buffer.add(3) > b'0'));
+            } else {
+                // At least one of the remaining 4 digits are nonzero.
+
+                // Obtain the next two digits.
+                prod = u64::from(prod as u32) * 100;
+                two_digits = (prod >> 32) as u32;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                    buffer.add(4),
+                    2,
+                );
+
+                // Remaining 2 digits are all zero?
+                if prod as u32 <= ((1u64 << 32) / 100) as u32 {
+                    *buffer = buffer.add(5 + usize::from(*buffer.add(5) > b'0'));
+                } else {
+                    // Obtain the last two digits.
+                    prod = u64::from(prod as u32) * 100;
+                    two_digits = (prod >> 32) as u32;
+                    ptr::copy_nonoverlapping(
+                        RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                        buffer.add(6),
+                        2,
+                    );
+
+                    *buffer = buffer.add(7 + usize::from(*buffer.add(7) > b'0'));
+                }
+            }
+        }
+    } else if s32 >= 1_0000 {
+        // 5 or 6 digits.
+        // 429497 = ceil(2^32 / 1_0000)
+        let mut prod = u64::from(s32) * 429497;
+        let mut two_digits = (prod >> 32) as u32;
+
+        // If s32 is of 6 digits, increase the exponent by 5.
+        // Otherwise, increase it by 4.
+        *exponent += 4 + i32::from(two_digits >= 10);
+
+        // Write the first digit and the decimal point.
+        ptr::copy_nonoverlapping(
+            RADIX_100_HEAD_TABLE.as_ptr().add((two_digits * 2) as usize),
+            *buffer,
+            2,
+        );
+        // This third character may be overwritten later but we don't care.
+        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
+
+        // Remaining 4 digits are all zero?
+        if prod as u32 <= ((1u64 << 32) / 1_0000) as u32 {
+            // The number of characters actually written is 1 or 3, similarly to the case of
+            // 7 or 8 digits.
+            *buffer = buffer
+                .add(1 + (usize::from(two_digits >= 10) & usize::from(*buffer.add(2) > b'0')) * 2);
+        } else {
+            // At least one of the remaining 4 digits are nonzero.
+            // After this adjustment, now the first destination becomes buffer + 2.
+            *buffer = buffer.add(usize::from(two_digits >= 10));
+
+            // Obtain the next two digits.
+            prod = u64::from(prod as u32) * 100;
+            two_digits = (prod >> 32) as u32;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                buffer.add(2),
+                2,
+            );
+
+            // Remaining 2 digits are all zero?
+            if prod as u32 <= ((1u64 << 32) / 100) as u32 {
+                *buffer = buffer.add(3 + usize::from(*buffer.add(3) > b'0'));
+            } else {
+                // Obtain the last two digits.
+                prod = u64::from(prod as u32) * 100;
+                two_digits = (prod >> 32) as u32;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                    buffer.add(4),
+                    2,
+                );
+
+                *buffer = buffer.add(5 + usize::from(*buffer.add(5) > b'0'));
+            }
+        }
+    } else if s32 >= 100 {
+        // 3 or 4 digits.
+        // 42949673 = ceil(2^32 / 100)
+        let mut prod = u64::from(s32) * 42949673;
+        let mut two_digits = (prod >> 32) as u32;
+
+        // If s32 is of 4 digits, increase the exponent by 3.
+        // Otherwise, increase it by 2.
+        *exponent += 2 + i32::from(two_digits >= 10);
+
+        // Write the first digit and the decimal point.
+        ptr::copy_nonoverlapping(
+            RADIX_100_HEAD_TABLE.as_ptr().add((two_digits * 2) as usize),
+            *buffer,
+            2,
+        );
+        // This third character may be overwritten later but we don't care.
+        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
+
+        // Remaining 2 digits are all zero?
+        if prod as u32 <= ((1u64 << 32) / 100) as u32 {
+            // The number of characters actually written is 1 or 3, similarly to the case of
+            // 7 or 8 digits.
+            *buffer = buffer
+                .add(1 + (usize::from(two_digits >= 10) & usize::from(*buffer.add(2) > b'0')) * 2);
+        } else {
+            // At least one of the remaining 2 digits are nonzero.
+            // After this adjustment, now the first destination becomes buffer + 2.
+            *buffer = buffer.add(usize::from(two_digits >= 10));
+
+            // Obtain the last two digits.
+            prod = u64::from(prod as u32) * 100;
+            two_digits = (prod >> 32) as u32;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                buffer.add(2),
+                2,
+            );
+
+            *buffer = buffer.add(3 + usize::from(*buffer.add(3) > b'0'));
+        }
+    } else {
+        // 1 or 2 digits.
+        // If s32 is of 2 digits, increase the exponent by 1.
+        *exponent += i32::from(s32 >= 10);
+
+        // Write the first digit and the decimal point.
+        ptr::copy_nonoverlapping(
+            RADIX_100_HEAD_TABLE.as_ptr().add((s32 * 2) as usize),
+            *buffer,
+            2,
+        );
+        // This third character may be overwritten later but we don't care.
+        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((s32 * 2 + 1) as usize);
+
+        // The number of characters actually written is 1 or 3, similarly to the case of
+        // 7 or 8 digits.
+        *buffer = buffer.add(1 + (usize::from(s32 >= 10) & usize::from(*buffer.add(2) > b'0')) * 2);
+    }
+}
+
+unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut u8) -> *mut u8 {
+    // Print significand by decomposing it into a 9-digit block and a 8-digit block.
+    let first_block: u32;
+    let second_block: u32;
+    let no_second_block: bool;
+
+    if significand >= 1_0000_0000 {
+        first_block = (significand / 1_0000_0000) as u32;
+        second_block = (significand as u32).wrapping_sub(first_block.wrapping_mul(1_0000_0000));
+        exponent += 8;
+        no_second_block = second_block == 0;
+    } else {
+        first_block = significand as u32;
+        second_block = 0;
+        no_second_block = true;
+    }
+
+    if no_second_block {
+        print_9_digits(first_block, &mut exponent, &mut buffer);
+    } else {
+        // We proceed similarly to print_9_digits(), but since we do not need to remove
+        // trailing zeros, the procedure is a bit simpler.
+        if first_block >= 1_0000_0000 {
+            // The input is of 17 digits, thus there should be no trailing zero at all.
+            // The first block is of 9 digits.
+            // 1441151882 = ceil(2^57 / 1_0000_0000) + 1
+            let mut prod = u64::from(first_block) * 1441151882;
+            prod >>= 25;
+            ptr::copy_nonoverlapping(
+                RADIX_100_HEAD_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer,
+                2,
+            );
+
+            prod = u64::from(prod as u32) * 100;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(2),
+                2,
+            );
+            prod = u64::from(prod as u32) * 100;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(4),
+                2,
+            );
+            prod = u64::from(prod as u32) * 100;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(6),
+                2,
+            );
+            prod = u64::from(prod as u32) * 100;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(8),
+                2,
+            );
+
+            prod = u64::from(second_block) * 281474978;
+            prod >>= 16;
+            prod += 1;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(10),
+                2,
+            );
+            prod = u64::from(prod as u32) * 100;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(12),
+                2,
+            );
+            prod = u64::from(prod as u32) * 100;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(14),
+                2,
+            );
+            prod = u64::from(prod as u32) * 100;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE
+                    .as_ptr()
+                    .add(((prod >> 32) as u32 * 2) as usize),
+                buffer.add(16),
+                2,
+            );
+
+            exponent += 8;
+            buffer = buffer.add(18);
+        } else {
+            if first_block >= 100_0000 {
+                // 7 or 8 digits.
+                // 281474978 = ceil(2^48 / 100_0000) + 1
+                let mut prod = u64::from(first_block) * 281474978;
+                prod >>= 16;
+                let two_digits = (prod >> 32) as u32;
+
+                ptr::copy_nonoverlapping(
+                    RADIX_100_HEAD_TABLE.as_ptr().add((two_digits * 2) as usize),
+                    buffer,
+                    2,
+                );
+                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
+
+                exponent += 6 + i32::from(two_digits >= 10);
+                buffer = buffer.add(usize::from(two_digits >= 10));
+
+                // Print remaining 6 digits.
+                prod = u64::from(prod as u32) * 100;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE
+                        .as_ptr()
+                        .add(((prod >> 32) as u32 * 2) as usize),
+                    buffer.add(2),
+                    2,
+                );
+                prod = u64::from(prod as u32) * 100;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE
+                        .as_ptr()
+                        .add(((prod >> 32) as u32 * 2) as usize),
+                    buffer.add(4),
+                    2,
+                );
+                prod = u64::from(prod as u32) * 100;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE
+                        .as_ptr()
+                        .add(((prod >> 32) as u32 * 2) as usize),
+                    buffer.add(6),
+                    2,
+                );
+
+                buffer = buffer.add(8);
+            } else if first_block >= 1_0000 {
+                // 5 or 6 digits.
+                // 429497 = ceil(2^32 / 1_0000)
+                let mut prod = u64::from(first_block) * 429497;
+                let two_digits = (prod >> 32) as u32;
+
+                ptr::copy_nonoverlapping(
+                    RADIX_100_HEAD_TABLE.as_ptr().add((two_digits * 2) as usize),
+                    buffer,
+                    2,
+                );
+                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
+
+                exponent += 4 + i32::from(two_digits >= 10);
+                buffer = buffer.add(usize::from(two_digits >= 10));
+
+                // Print remaining 4 digits.
+                prod = u64::from(prod as u32) * 100;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE
+                        .as_ptr()
+                        .add(((prod >> 32) as u32 * 2) as usize),
+                    buffer.add(2),
+                    2,
+                );
+                prod = u64::from(prod as u32) * 100;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE
+                        .as_ptr()
+                        .add(((prod >> 32) as u32 * 2) as usize),
+                    buffer.add(4),
+                    2,
+                );
+
+                buffer = buffer.add(6);
+            } else if first_block >= 100 {
+                // 3 or 4 digits.
+                // 42949673 = ceil(2^32 / 100)
+                let mut prod = u64::from(first_block) * 42949673;
+                let two_digits = (prod >> 32) as u32;
+
+                ptr::copy_nonoverlapping(
+                    RADIX_100_HEAD_TABLE.as_ptr().add((two_digits * 2) as usize),
+                    buffer,
+                    2,
+                );
+                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((two_digits * 2 + 1) as usize);
+
+                exponent += 2 + i32::from(two_digits >= 10);
+                buffer = buffer.add(usize::from(two_digits >= 10));
+
+                // Print remaining 2 digits.
+                prod = u64::from(prod as u32) * 100;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE
+                        .as_ptr()
+                        .add(((prod >> 32) as u32 * 2) as usize),
+                    buffer.add(2),
+                    2,
+                );
+
+                buffer = buffer.add(4);
+            } else {
+                // 1 or 2 digits.
+                ptr::copy_nonoverlapping(
+                    RADIX_100_HEAD_TABLE
+                        .as_ptr()
+                        .add((first_block * 2) as usize),
+                    buffer,
+                    2,
+                );
+                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((first_block * 2 + 1) as usize);
+
+                exponent += i32::from(first_block >= 10);
+                buffer = buffer.add(2 + usize::from(first_block >= 10));
+            }
+
+            // Next, print the second block.
+            // The second block is of 8 digits, but we may have trailing zeros.
+            // 281474978 = ceil(2^48 / 100_0000) + 1
+            let mut prod = u64::from(second_block) * 281474978;
+            prod >>= 16;
+            prod += 1;
+            let mut two_digits = (prod >> 32) as u32;
+            ptr::copy_nonoverlapping(
+                RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                buffer,
+                2,
+            );
+
+            // Remaining 6 digits are all zero?
+            if prod as u32 <= ((1u64 << 32) / 100_0000) as u32 {
+                buffer = buffer.add(1 + usize::from(*buffer.add(1) > b'0'));
+            } else {
+                // Obtain the next two digits.
+                prod = u64::from(prod as u32) * 100;
+                two_digits = (prod >> 32) as u32;
+                ptr::copy_nonoverlapping(
+                    RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                    buffer.add(2),
+                    2,
+                );
+
+                // Remaining 4 digits are all zero?
+                if prod as u32 <= ((1u64 << 32) / 1_0000) as u32 {
+                    buffer = buffer.add(3 + usize::from(*buffer.add(3) > b'0'));
+                } else {
+                    // Obtain the next two digits.
+                    prod = u64::from(prod as u32) * 100;
+                    two_digits = (prod >> 32) as u32;
+                    ptr::copy_nonoverlapping(
+                        RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                        buffer.add(4),
+                        2,
+                    );
+
+                    // Remaining 2 digits are all zero?
+                    if prod as u32 <= ((1u64 << 32) / 100) as u32 {
+                        buffer = buffer.add(5 + usize::from(*buffer.add(5) > b'0'));
+                    } else {
+                        // Obtain the last two digits.
+                        prod = u64::from(prod as u32) * 100;
+                        two_digits = (prod >> 32) as u32;
+                        ptr::copy_nonoverlapping(
+                            RADIX_100_TABLE.as_ptr().add((two_digits * 2) as usize),
+                            buffer.add(6),
+                            2,
+                        );
+                        buffer = buffer.add(7 + usize::from(*buffer.add(7) > b'0'));
+                    }
+                }
+            }
+        }
     }
 
     // Print exponent and return
     if exponent < 0 {
-        ptr::copy_nonoverlapping(b"E-".as_ptr(), buffer, 2);
+        ptr::copy_nonoverlapping(b"E-".as_ptr().cast::<u8>(), buffer, 2);
         buffer = buffer.add(2);
         exponent = -exponent;
     } else {
