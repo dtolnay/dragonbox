@@ -233,14 +233,14 @@ const _: () = {
     assert!(max_k <= cache::MAX_K);
 };
 
-// The main algorithm assumes the input is a normal/subnormal finite number
+// The main algorithm assumes the input is a normal/subnormal finite number.
 fn compute_nearest_normal(
     two_fc: CarrierUint,
     binary_exponent: i32,
     has_even_significand_bits: bool,
 ) -> Decimal {
     //////////////////////////////////////////////////////////////////////
-    // Step 1: Schubfach multiplier calculation
+    // Step 1: Schubfach multiplier calculation.
     //////////////////////////////////////////////////////////////////////
 
     // Compute k and beta.
@@ -264,7 +264,7 @@ fn compute_nearest_normal(
     let z_result = compute_mul((two_fc | 1) << beta, &cache);
 
     //////////////////////////////////////////////////////////////////////
-    // Step 2: Try larger divisor; remove trailing zeros if necessary
+    // Step 2: Try larger divisor; remove trailing zeros if necessary.
     //////////////////////////////////////////////////////////////////////
 
     const BIG_DIVISOR: u32 = compute_power32::<{ KAPPA + 1 }>(10);
@@ -304,7 +304,7 @@ fn compute_nearest_normal(
     }
 
     //////////////////////////////////////////////////////////////////////
-    // Step 3: Find the significand with the smaller divisor
+    // Step 3: Find the significand with the smaller divisor.
     //////////////////////////////////////////////////////////////////////
 
     decimal_significand *= 10;
