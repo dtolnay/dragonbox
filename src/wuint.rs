@@ -1,7 +1,7 @@
 // Translated from C++ to Rust. The original C++ code can be found at
 // https://github.com/jk-jeon/dragonbox and carries the following license:
 //
-// Copyright 2020-2024 Junekey Jeon
+// Copyright 2020-2025 Junekey Jeon
 //
 // The contents of this file may be used under the terms of
 // the Apache License v2.0 with LLVM Exceptions.
