@@ -457,7 +457,7 @@ fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: u32) -> 
     loop {
         if r < deltai {
             // Exclude the right endpoint if necessary.
-            if r == 0 && (z_result.is_integer & !has_even_significand_bits) {
+            if (r | u32::from(!z_result.is_integer) | u32::from(has_even_significand_bits)) == 0 {
                 decimal_significand -= 1;
                 r = BIG_DIVISOR;
                 break;
