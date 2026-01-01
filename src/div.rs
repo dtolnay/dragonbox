@@ -58,7 +58,7 @@ pub(crate) fn divide_by_pow10<const N: u32, const N_MAX: u64>(n: u64) -> u64 {
     // Without the bound on n_max (which compilers these days never leverage),
     // the smallest magic number for this computation does not fit into 64-bits.
     if N == 3 && N_MAX <= 15534100272597517998 {
-        return wuint::umul128_upper64(n, 2361183241434822607) >> 7;
+        return wuint::umul128_upper64(n, 4722366482869645214) >> 8;
     }
     let divisor = const { crate::compute_power64::<N>(10) };
     n / divisor
