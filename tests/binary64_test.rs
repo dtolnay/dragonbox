@@ -338,15 +338,14 @@ fn test_critical_boundary_case() {
     let expected = "1.0000000000000002E0";
     assert_eq!(
         result, expected,
-        "Critical boundary case failed. Input: {}, Expected: {}, Got: {}",
-        test_value, expected, result
+        "Critical boundary case failed. Input: {test_value}, Expected: {expected}, Got: {result}",
     );
 
     // Also verify round-trip conversion
     assert_eq!(
         test_value,
         result.parse().unwrap(),
-        "Round-trip conversion failed for critical boundary case"
+        "Round-trip conversion failed for critical boundary case",
     );
 
     // Additional test case: A power of 2 boundary that might trigger the condition
@@ -358,8 +357,6 @@ fn test_critical_boundary_case() {
     assert_eq!(
         test_value,
         result.parse().unwrap(),
-        "Failed for power of 2 boundary case: {}, result: {}",
-        test_value,
-        result
+        "Failed for power of 2 boundary case: {test_value}, result: {result}",
     );
 }
