@@ -106,6 +106,7 @@ pub struct Buffer {
 pub trait Float: Sealed {}
 
 // IEEE754-binary64
+const TOTAL_BITS: usize = 64;
 const SIGNIFICAND_BITS: usize = 52;
 const EXPONENT_BITS: usize = 11;
 const MIN_EXPONENT: i32 = -1022;
@@ -130,15 +131,13 @@ const fn extract_exponent_bits(u: CarrierUint) -> u32 {
 // Remove the exponent bits and extract significand bits together with the sign
 // bit.
 const fn remove_exponent_bits(u: CarrierUint) -> CarrierUint {
-    const MASK: CarrierUint = !(((1 << EXPONENT_BITS) - 1) << SIGNIFICAND_BITS);
-    u & MASK
+    u & !(((1 << EXPONENT_BITS) - 1) << SIGNIFICAND_BITS)
 }
 
 // Shift the obtained signed significand bits to the left by 1 to remove the
 // sign bit.
 const fn remove_sign_bit_and_shift(u: CarrierUint) -> CarrierUint {
-    const MASK: CarrierUint = CarrierUint::MAX;
-    (u << 1) & MASK
+    (u << 1) & ((((1 << (TOTAL_BITS - 1)) - 1) << 1) | 1)
 }
 
 const fn is_nonzero(u: CarrierUint) -> bool {
