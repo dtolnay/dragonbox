@@ -1,7 +1,7 @@
 // Translated from C++ to Rust. The original C++ code can be found at
 // https://github.com/jk-jeon/dragonbox and carries the following license:
 //
-// Copyright 2020-2023 Junekey Jeon
+// Copyright 2020-2024 Junekey Jeon
 //
 // The contents of this file may be used under the terms of
 // the Apache License v2.0 with LLVM Exceptions.
@@ -131,13 +131,13 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
             2,
         );
 
-        prod = u64::from(prod as u32) * 100;
+        prod = (prod & 0xffffffff) * 100;
         print_2_digits((prod >> 32) as u32, buffer.add(2));
-        prod = u64::from(prod as u32) * 100;
+        prod = (prod & 0xffffffff) * 100;
         print_2_digits((prod >> 32) as u32, buffer.add(4));
-        prod = u64::from(prod as u32) * 100;
+        prod = (prod & 0xffffffff) * 100;
         print_2_digits((prod >> 32) as u32, buffer.add(6));
-        prod = u64::from(prod as u32) * 100;
+        prod = (prod & 0xffffffff) * 100;
         print_2_digits((prod >> 32) as u32, buffer.add(8));
 
         *exponent += 8;
@@ -179,7 +179,7 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
             *buffer = buffer.add(usize::from(head_digits >= 10));
 
             // Obtain the next two digits.
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(2));
 
             // Remaining 4 digits are all zero?
@@ -189,7 +189,7 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
                 // At least one of the remaining 4 digits are nonzero.
 
                 // Obtain the next two digits.
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(4));
 
                 // Remaining 2 digits are all zero?
@@ -197,7 +197,7 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
                     *buffer = buffer.add(5 + usize::from(*buffer.add(5) > b'0'));
                 } else {
                     // Obtain the last two digits.
-                    prod = u64::from(prod as u32) * 100;
+                    prod = (prod & 0xffffffff) * 100;
                     print_2_digits((prod >> 32) as u32, buffer.add(6));
 
                     *buffer = buffer.add(7 + usize::from(*buffer.add(7) > b'0'));
@@ -237,7 +237,7 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
             *buffer = buffer.add(usize::from(head_digits >= 10));
 
             // Obtain the next two digits.
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(2));
 
             // Remaining 2 digits are all zero?
@@ -245,7 +245,7 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
                 *buffer = buffer.add(3 + usize::from(*buffer.add(3) > b'0'));
             } else {
                 // Obtain the last two digits.
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(4));
 
                 *buffer = buffer.add(5 + usize::from(*buffer.add(5) > b'0'));
@@ -284,7 +284,7 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
             *buffer = buffer.add(usize::from(head_digits >= 10));
 
             // Obtain the last two digits.
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(2));
 
             *buffer = buffer.add(3 + usize::from(*buffer.add(3) > b'0'));
@@ -345,13 +345,13 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 2,
             );
 
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(2));
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(4));
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(6));
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(8));
 
             // The second block is of 8 digits.
@@ -360,11 +360,11 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
             prod >>= 16;
             prod += 1;
             print_2_digits((prod >> 32) as u32, buffer.add(10));
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(12));
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(14));
-            prod = u64::from(prod as u32) * 100;
+            prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(16));
 
             exponent += 8;
@@ -390,11 +390,11 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 buffer = buffer.add(usize::from(head_digits >= 10));
 
                 // Print remaining 6 digits.
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(2));
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(4));
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(6));
 
                 buffer = buffer.add(8);
@@ -417,9 +417,9 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 buffer = buffer.add(usize::from(head_digits >= 10));
 
                 // Print remaining 4 digits.
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(2));
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(4));
 
                 buffer = buffer.add(6);
@@ -442,7 +442,7 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 buffer = buffer.add(usize::from(head_digits >= 10));
 
                 // Print remaining 2 digits.
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(2));
 
                 buffer = buffer.add(4);
@@ -474,7 +474,7 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 buffer = buffer.add(1 + usize::from(*buffer.add(1) > b'0'));
             } else {
                 // Obtain the next two digits.
-                prod = u64::from(prod as u32) * 100;
+                prod = (prod & 0xffffffff) * 100;
                 print_2_digits((prod >> 32) as u32, buffer.add(2));
 
                 // Remaining 4 digits are all zero?
@@ -482,7 +482,7 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                     buffer = buffer.add(3 + usize::from(*buffer.add(3) > b'0'));
                 } else {
                     // Obtain the next two digits.
-                    prod = u64::from(prod as u32) * 100;
+                    prod = (prod & 0xffffffff) * 100;
                     print_2_digits((prod >> 32) as u32, buffer.add(4));
 
                     // Remaining 2 digits are all zero?
@@ -490,7 +490,7 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                         buffer = buffer.add(5 + usize::from(*buffer.add(5) > b'0'));
                     } else {
                         // Obtain the last two digits.
-                        prod = u64::from(prod as u32) * 100;
+                        prod = (prod & 0xffffffff) * 100;
                         print_2_digits((prod >> 32) as u32, buffer.add(6));
                         buffer = buffer.add(7 + usize::from(*buffer.add(7) > b'0'));
                     }
