@@ -44,50 +44,54 @@ pub(crate) unsafe fn to_chars(x: f64, mut buffer: *mut u8) -> *mut u8 {
     }
 }
 
-static RADIX_100_TABLE: [u8; 200] = [
-    b'0', b'0', b'0', b'1', b'0', b'2', b'0', b'3', b'0', b'4', //
-    b'0', b'5', b'0', b'6', b'0', b'7', b'0', b'8', b'0', b'9', //
-    b'1', b'0', b'1', b'1', b'1', b'2', b'1', b'3', b'1', b'4', //
-    b'1', b'5', b'1', b'6', b'1', b'7', b'1', b'8', b'1', b'9', //
-    b'2', b'0', b'2', b'1', b'2', b'2', b'2', b'3', b'2', b'4', //
-    b'2', b'5', b'2', b'6', b'2', b'7', b'2', b'8', b'2', b'9', //
-    b'3', b'0', b'3', b'1', b'3', b'2', b'3', b'3', b'3', b'4', //
-    b'3', b'5', b'3', b'6', b'3', b'7', b'3', b'8', b'3', b'9', //
-    b'4', b'0', b'4', b'1', b'4', b'2', b'4', b'3', b'4', b'4', //
-    b'4', b'5', b'4', b'6', b'4', b'7', b'4', b'8', b'4', b'9', //
-    b'5', b'0', b'5', b'1', b'5', b'2', b'5', b'3', b'5', b'4', //
-    b'5', b'5', b'5', b'6', b'5', b'7', b'5', b'8', b'5', b'9', //
-    b'6', b'0', b'6', b'1', b'6', b'2', b'6', b'3', b'6', b'4', //
-    b'6', b'5', b'6', b'6', b'6', b'7', b'6', b'8', b'6', b'9', //
-    b'7', b'0', b'7', b'1', b'7', b'2', b'7', b'3', b'7', b'4', //
-    b'7', b'5', b'7', b'6', b'7', b'7', b'7', b'8', b'7', b'9', //
-    b'8', b'0', b'8', b'1', b'8', b'2', b'8', b'3', b'8', b'4', //
-    b'8', b'5', b'8', b'6', b'8', b'7', b'8', b'8', b'8', b'9', //
-    b'9', b'0', b'9', b'1', b'9', b'2', b'9', b'3', b'9', b'4', //
-    b'9', b'5', b'9', b'6', b'9', b'7', b'9', b'8', b'9', b'9', //
+type BytePair = [u8; 2];
+
+#[rustfmt::skip]
+static RADIX_100_TABLE: [BytePair; 100] = [
+    [b'0', b'0'], [b'0', b'1'], [b'0', b'2'], [b'0', b'3'], [b'0', b'4'],
+    [b'0', b'5'], [b'0', b'6'], [b'0', b'7'], [b'0', b'8'], [b'0', b'9'],
+    [b'1', b'0'], [b'1', b'1'], [b'1', b'2'], [b'1', b'3'], [b'1', b'4'],
+    [b'1', b'5'], [b'1', b'6'], [b'1', b'7'], [b'1', b'8'], [b'1', b'9'],
+    [b'2', b'0'], [b'2', b'1'], [b'2', b'2'], [b'2', b'3'], [b'2', b'4'],
+    [b'2', b'5'], [b'2', b'6'], [b'2', b'7'], [b'2', b'8'], [b'2', b'9'],
+    [b'3', b'0'], [b'3', b'1'], [b'3', b'2'], [b'3', b'3'], [b'3', b'4'],
+    [b'3', b'5'], [b'3', b'6'], [b'3', b'7'], [b'3', b'8'], [b'3', b'9'],
+    [b'4', b'0'], [b'4', b'1'], [b'4', b'2'], [b'4', b'3'], [b'4', b'4'],
+    [b'4', b'5'], [b'4', b'6'], [b'4', b'7'], [b'4', b'8'], [b'4', b'9'],
+    [b'5', b'0'], [b'5', b'1'], [b'5', b'2'], [b'5', b'3'], [b'5', b'4'],
+    [b'5', b'5'], [b'5', b'6'], [b'5', b'7'], [b'5', b'8'], [b'5', b'9'],
+    [b'6', b'0'], [b'6', b'1'], [b'6', b'2'], [b'6', b'3'], [b'6', b'4'],
+    [b'6', b'5'], [b'6', b'6'], [b'6', b'7'], [b'6', b'8'], [b'6', b'9'],
+    [b'7', b'0'], [b'7', b'1'], [b'7', b'2'], [b'7', b'3'], [b'7', b'4'],
+    [b'7', b'5'], [b'7', b'6'], [b'7', b'7'], [b'7', b'8'], [b'7', b'9'],
+    [b'8', b'0'], [b'8', b'1'], [b'8', b'2'], [b'8', b'3'], [b'8', b'4'],
+    [b'8', b'5'], [b'8', b'6'], [b'8', b'7'], [b'8', b'8'], [b'8', b'9'],
+    [b'9', b'0'], [b'9', b'1'], [b'9', b'2'], [b'9', b'3'], [b'9', b'4'],
+    [b'9', b'5'], [b'9', b'6'], [b'9', b'7'], [b'9', b'8'], [b'9', b'9'],
 ];
 
-static RADIX_100_HEAD_TABLE: [u8; 200] = [
-    b'0', b'.', b'1', b'.', b'2', b'.', b'3', b'.', b'4', b'.', //
-    b'5', b'.', b'6', b'.', b'7', b'.', b'8', b'.', b'9', b'.', //
-    b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', //
-    b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', b'1', b'.', //
-    b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', //
-    b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', b'2', b'.', //
-    b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', //
-    b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', b'3', b'.', //
-    b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', //
-    b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', b'4', b'.', //
-    b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', //
-    b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', b'5', b'.', //
-    b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', //
-    b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', b'6', b'.', //
-    b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', //
-    b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', b'7', b'.', //
-    b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', //
-    b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', b'8', b'.', //
-    b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', //
-    b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', b'9', b'.', //
+#[rustfmt::skip]
+static RADIX_100_HEAD_TABLE: [BytePair; 100] = [
+    [b'0', b'.'], [b'1', b'.'], [b'2', b'.'], [b'3', b'.'], [b'4', b'.'],
+    [b'5', b'.'], [b'6', b'.'], [b'7', b'.'], [b'8', b'.'], [b'9', b'.'],
+    [b'1', b'.'], [b'1', b'.'], [b'1', b'.'], [b'1', b'.'], [b'1', b'.'],
+    [b'1', b'.'], [b'1', b'.'], [b'1', b'.'], [b'1', b'.'], [b'1', b'.'],
+    [b'2', b'.'], [b'2', b'.'], [b'2', b'.'], [b'2', b'.'], [b'2', b'.'],
+    [b'2', b'.'], [b'2', b'.'], [b'2', b'.'], [b'2', b'.'], [b'2', b'.'],
+    [b'3', b'.'], [b'3', b'.'], [b'3', b'.'], [b'3', b'.'], [b'3', b'.'],
+    [b'3', b'.'], [b'3', b'.'], [b'3', b'.'], [b'3', b'.'], [b'3', b'.'],
+    [b'4', b'.'], [b'4', b'.'], [b'4', b'.'], [b'4', b'.'], [b'4', b'.'],
+    [b'4', b'.'], [b'4', b'.'], [b'4', b'.'], [b'4', b'.'], [b'4', b'.'],
+    [b'5', b'.'], [b'5', b'.'], [b'5', b'.'], [b'5', b'.'], [b'5', b'.'],
+    [b'5', b'.'], [b'5', b'.'], [b'5', b'.'], [b'5', b'.'], [b'5', b'.'],
+    [b'6', b'.'], [b'6', b'.'], [b'6', b'.'], [b'6', b'.'], [b'6', b'.'],
+    [b'6', b'.'], [b'6', b'.'], [b'6', b'.'], [b'6', b'.'], [b'6', b'.'],
+    [b'7', b'.'], [b'7', b'.'], [b'7', b'.'], [b'7', b'.'], [b'7', b'.'],
+    [b'7', b'.'], [b'7', b'.'], [b'7', b'.'], [b'7', b'.'], [b'7', b'.'],
+    [b'8', b'.'], [b'8', b'.'], [b'8', b'.'], [b'8', b'.'], [b'8', b'.'],
+    [b'8', b'.'], [b'8', b'.'], [b'8', b'.'], [b'8', b'.'], [b'8', b'.'],
+    [b'9', b'.'], [b'9', b'.'], [b'9', b'.'], [b'9', b'.'], [b'9', b'.'],
+    [b'9', b'.'], [b'9', b'.'], [b'9', b'.'], [b'9', b'.'], [b'9', b'.'],
 ];
 
 unsafe fn print_1_digit(n: u32, buffer: *mut u8) {
@@ -98,7 +102,13 @@ unsafe fn print_1_digit(n: u32, buffer: *mut u8) {
 }
 
 unsafe fn print_2_digits(n: u32, buffer: *mut u8) {
-    ptr::copy_nonoverlapping(RADIX_100_TABLE.as_ptr().add((n * 2) as usize), buffer, 2);
+    let bp = *RADIX_100_TABLE.get_unchecked(n as usize);
+    *buffer.cast::<BytePair>() = bp;
+}
+
+unsafe fn print_head_chars(n: u32, buffer: *mut u8) {
+    let bp = *RADIX_100_HEAD_TABLE.get_unchecked(n as usize);
+    *buffer.cast::<BytePair>() = bp;
 }
 
 // These digit generation routines are inspired by James Anhalt's itoa
@@ -125,13 +135,7 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
         // 1441151882 = ceil(2^57 / 1_0000_0000) + 1
         let mut prod = u64::from(s32) * 1441151882;
         prod >>= 25;
-        ptr::copy_nonoverlapping(
-            RADIX_100_HEAD_TABLE
-                .as_ptr()
-                .add(((prod >> 32) * 2) as usize),
-            *buffer,
-            2,
-        );
+        print_head_chars((prod >> 32) as u32, *buffer);
 
         prod = (prod & 0xffffffff) * 100;
         print_2_digits((prod >> 32) as u32, buffer.add(2));
@@ -155,15 +159,9 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
         *exponent += 6 + i32::from(head_digits >= 10);
 
         // Write the first digit and the decimal point.
-        ptr::copy_nonoverlapping(
-            RADIX_100_HEAD_TABLE
-                .as_ptr()
-                .add((head_digits * 2) as usize),
-            *buffer,
-            2,
-        );
+        print_head_chars(head_digits, *buffer);
         // This third character may be overwritten later but we don't care.
-        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((head_digits * 2 + 1) as usize);
+        *buffer.add(2) = RADIX_100_TABLE.get_unchecked(head_digits as usize)[1];
 
         // Remaining 6 digits are all zero?
         if prod as u32 <= ((1u64 << 32) / 100_0000) as u32 {
@@ -217,15 +215,9 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
         *exponent += 4 + i32::from(head_digits >= 10);
 
         // Write the first digit and the decimal point.
-        ptr::copy_nonoverlapping(
-            RADIX_100_HEAD_TABLE
-                .as_ptr()
-                .add((head_digits * 2) as usize),
-            *buffer,
-            2,
-        );
+        print_head_chars(head_digits, *buffer);
         // This third character may be overwritten later but we don't care.
-        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((head_digits * 2 + 1) as usize);
+        *buffer.add(2) = RADIX_100_TABLE.get_unchecked(head_digits as usize)[1];
 
         // Remaining 4 digits are all zero?
         if prod as u32 <= ((1u64 << 32) / 1_0000) as u32 {
@@ -264,15 +256,9 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
         *exponent += 2 + i32::from(head_digits >= 10);
 
         // Write the first digit and the decimal point.
-        ptr::copy_nonoverlapping(
-            RADIX_100_HEAD_TABLE
-                .as_ptr()
-                .add((head_digits * 2) as usize),
-            *buffer,
-            2,
-        );
+        print_head_chars(head_digits, *buffer);
         // This third character may be overwritten later but we don't care.
-        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((head_digits * 2 + 1) as usize);
+        *buffer.add(2) = RADIX_100_TABLE.get_unchecked(head_digits as usize)[1];
 
         // Remaining 2 digits are all zero?
         if prod as u32 <= ((1u64 << 32) / 100) as u32 {
@@ -297,13 +283,9 @@ unsafe fn print_9_digits(s32: u32, exponent: &mut i32, buffer: &mut *mut u8) {
         *exponent += i32::from(s32 >= 10);
 
         // Write the first digit and the decimal point.
-        ptr::copy_nonoverlapping(
-            RADIX_100_HEAD_TABLE.as_ptr().add((s32 * 2) as usize),
-            *buffer,
-            2,
-        );
+        print_head_chars(s32, *buffer);
         // This third character may be overwritten later but we don't care.
-        *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((s32 * 2 + 1) as usize);
+        *buffer.add(2) = RADIX_100_TABLE.get_unchecked(s32 as usize)[1];
 
         // The number of characters actually written is 1 or 3, similarly to the case of
         // 7 or 8 digits.
@@ -339,13 +321,7 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
             // 1441151882 = ceil(2^57 / 1_0000_0000) + 1
             let mut prod = u64::from(first_block) * 1441151882;
             prod >>= 25;
-            ptr::copy_nonoverlapping(
-                RADIX_100_HEAD_TABLE
-                    .as_ptr()
-                    .add(((prod >> 32) as u32 * 2) as usize),
-                buffer,
-                2,
-            );
+            print_head_chars((prod >> 32) as u32, buffer);
 
             prod = (prod & 0xffffffff) * 100;
             print_2_digits((prod >> 32) as u32, buffer.add(2));
@@ -379,14 +355,8 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 prod >>= 16;
                 let head_digits = (prod >> 32) as u32;
 
-                ptr::copy_nonoverlapping(
-                    RADIX_100_HEAD_TABLE
-                        .as_ptr()
-                        .add((head_digits * 2) as usize),
-                    buffer,
-                    2,
-                );
-                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((head_digits * 2 + 1) as usize);
+                print_head_chars(head_digits, buffer);
+                *buffer.add(2) = RADIX_100_TABLE.get_unchecked(head_digits as usize)[1];
 
                 exponent += 6 + i32::from(head_digits >= 10);
                 buffer = buffer.add(usize::from(head_digits >= 10));
@@ -406,14 +376,8 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 let mut prod = u64::from(first_block) * 429497;
                 let head_digits = (prod >> 32) as u32;
 
-                ptr::copy_nonoverlapping(
-                    RADIX_100_HEAD_TABLE
-                        .as_ptr()
-                        .add((head_digits * 2) as usize),
-                    buffer,
-                    2,
-                );
-                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((head_digits * 2 + 1) as usize);
+                print_head_chars(head_digits, buffer);
+                *buffer.add(2) = RADIX_100_TABLE.get_unchecked(head_digits as usize)[1];
 
                 exponent += 4 + i32::from(head_digits >= 10);
                 buffer = buffer.add(usize::from(head_digits >= 10));
@@ -431,14 +395,8 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 let mut prod = u64::from(first_block) * 42949673;
                 let head_digits = (prod >> 32) as u32;
 
-                ptr::copy_nonoverlapping(
-                    RADIX_100_HEAD_TABLE
-                        .as_ptr()
-                        .add((head_digits * 2) as usize),
-                    buffer,
-                    2,
-                );
-                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((head_digits * 2 + 1) as usize);
+                print_head_chars(head_digits, buffer);
+                *buffer.add(2) = RADIX_100_TABLE.get_unchecked(head_digits as usize)[1];
 
                 exponent += 2 + i32::from(head_digits >= 10);
                 buffer = buffer.add(usize::from(head_digits >= 10));
@@ -450,14 +408,8 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
                 buffer = buffer.add(4);
             } else {
                 // 1 or 2 digits.
-                ptr::copy_nonoverlapping(
-                    RADIX_100_HEAD_TABLE
-                        .as_ptr()
-                        .add((first_block * 2) as usize),
-                    buffer,
-                    2,
-                );
-                *buffer.add(2) = *RADIX_100_TABLE.get_unchecked((first_block * 2 + 1) as usize);
+                print_head_chars(first_block, buffer);
+                *buffer.add(2) = RADIX_100_TABLE.get_unchecked(first_block as usize)[1];
 
                 exponent += i32::from(first_block >= 10);
                 buffer = buffer.add(2 + usize::from(first_block >= 10));
