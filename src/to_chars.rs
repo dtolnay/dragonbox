@@ -514,10 +514,8 @@ unsafe fn to_chars_detail(significand: u64, mut exponent: i32, mut buffer: *mut 
     if exponent >= 100 {
         // d1 = exponent / 10; d2 = exponent % 10;
         // 6554 = ceil(2^16 / 10)
-        let mut prod = exponent as u32 * 6554;
-        let d1 = prod >> 16;
-        prod = u32::from(prod as u16) * 5; // * 10
-        let d2 = prod >> 15; // >> 16
+        let d1 = (exponent as u32 * 6554) >> 16;
+        let d2 = exponent as u32 - 10 * d1;
         print_2_digits(d1, buffer);
         print_1_digit(d2, buffer.add(2));
         buffer = buffer.add(3);
