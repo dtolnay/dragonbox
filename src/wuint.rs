@@ -20,6 +20,8 @@
 
 use crate::cache::EntryTypeExt as _;
 
+// Get high half of the 128-bit result of multiplication of two 64-bit unsigned
+// integers.
 pub(crate) fn umul128_upper64(x: u64, y: u64) -> u64 {
     let p = u128::from(x) * u128::from(y);
     (p >> 64) as u64
