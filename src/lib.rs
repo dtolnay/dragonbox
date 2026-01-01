@@ -124,8 +124,7 @@ const CARRIER_BITS: usize = 64;
 // LSB so that there is no additional zero paddings on the right. This function
 // does not do bias adjustment.
 const fn extract_exponent_bits(u: CarrierUint) -> u32 {
-    const EXPONENT_BITS_MASK: u32 = (1 << EXPONENT_BITS) - 1;
-    (u >> SIGNIFICAND_BITS) as u32 & EXPONENT_BITS_MASK
+    (u >> SIGNIFICAND_BITS) as u32 & ((1 << EXPONENT_BITS) - 1)
 }
 
 // Remove the exponent bits and extract significand bits together with the sign
@@ -145,8 +144,7 @@ const fn is_nonzero(u: CarrierUint) -> bool {
 }
 
 const fn is_positive(u: CarrierUint) -> bool {
-    const SIGN_BIT: CarrierUint = 1 << (SIGNIFICAND_BITS + EXPONENT_BITS);
-    u < SIGN_BIT
+    u < (1 << (SIGNIFICAND_BITS + EXPONENT_BITS))
 }
 
 const fn is_negative(u: CarrierUint) -> bool {
