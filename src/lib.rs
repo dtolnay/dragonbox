@@ -245,10 +245,7 @@ fn compute_nearest_normal(
     // only cause a problem when we need to perform integer check for the
     // center. Fortunately, with these inputs, that branch is never executed, so
     // we are fine.
-    let ComputeMulResult {
-        result: zi,
-        is_integer: is_z_integer,
-    } = compute_mul((two_fc | 1) << beta, &cache);
+    let z_result = compute_mul((two_fc | 1) << beta, &cache);
 
     //////////////////////////////////////////////////////////////////////
     // Step 2: Try larger divisor; remove trailing zeros if necessary
@@ -262,13 +259,13 @@ fn compute_nearest_normal(
     let mut decimal_significand = div::divide_by_pow10::<
         { KAPPA + 1 },
         { (1 << (SIGNIFICAND_BITS + 1)) * BIG_DIVISOR as u64 - 1 },
-    >(zi);
-    let mut r = (zi - u64::from(BIG_DIVISOR) * decimal_significand) as u32;
+    >(z_result.integer_part);
+    let mut r = (z_result.integer_part - u64::from(BIG_DIVISOR) * decimal_significand) as u32;
 
     loop {
         if r < deltai {
             // Exclude the right endpoint if necessary.
-            if r == 0 && (is_z_integer & !has_even_significand_bits) {
+            if r == 0 && (z_result.is_integer & !has_even_significand_bits) {
                 decimal_significand -= 1;
                 r = BIG_DIVISOR;
                 break;
@@ -277,12 +274,9 @@ fn compute_nearest_normal(
             break;
         } else {
             // r == deltai; compare fractional parts.
-            let ComputeMulParityResult {
-                parity: xi_parity,
-                is_integer: x_is_integer,
-            } = compute_mul_parity(two_fc - 1, &cache, beta);
+            let x_result = compute_mul_parity(two_fc - 1, &cache, beta);
 
-            if !(xi_parity | (x_is_integer & has_even_significand_bits)) {
+            if !(x_result.parity | (x_result.is_integer & has_even_significand_bits)) {
                 break;
             }
         }
@@ -315,17 +309,14 @@ fn compute_nearest_normal(
         // Since there are only 2 possibilities, we only need to care about the parity.
         // Also, zi and r should have the same parity since the divisor
         // is an even number.
-        let ComputeMulParityResult {
-            parity: yi_parity,
-            is_integer: is_y_integer,
-        } = compute_mul_parity(two_fc, &cache, beta);
-        if yi_parity != approx_y_parity {
+        let y_result = compute_mul_parity(two_fc, &cache, beta);
+        if y_result.parity != approx_y_parity {
             decimal_significand -= 1;
         } else {
             // If z^(f) >= epsilon^(f), we might have a tie
             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
             // For tie-to-up case, we can just choose the upper one.
-            if policy::prefer_round_down(decimal_significand) & is_y_integer {
+            if policy::prefer_round_down(decimal_significand) & y_result.is_integer {
                 decimal_significand -= 1;
             }
         }
@@ -389,14 +380,14 @@ fn compute_nearest_shorter(binary_exponent: i32) -> Decimal {
 }
 
 struct ComputeMulResult {
-    result: CarrierUint,
+    integer_part: CarrierUint,
     is_integer: bool,
 }
 
 fn compute_mul(u: CarrierUint, cache: &cache::EntryType) -> ComputeMulResult {
     let r = wuint::umul192_upper128(u, *cache);
     ComputeMulResult {
-        result: r.high(),
+        integer_part: r.high(),
         is_integer: r.low() == 0,
     }
 }
