@@ -129,14 +129,16 @@ const fn extract_exponent_bits(u: CarrierUint) -> u32 {
 
 // Remove the exponent bits and extract significand bits together with the sign
 // bit.
-const fn remove_exponent_bits(u: CarrierUint, exponent_bits: u32) -> CarrierUint {
-    u ^ ((exponent_bits as CarrierUint) << SIGNIFICAND_BITS)
+const fn remove_exponent_bits(u: CarrierUint) -> CarrierUint {
+    const MASK: CarrierUint = !(((1 << EXPONENT_BITS) - 1) << SIGNIFICAND_BITS);
+    u & MASK
 }
 
 // Shift the obtained signed significand bits to the left by 1 to remove the
 // sign bit.
 const fn remove_sign_bit_and_shift(u: CarrierUint) -> CarrierUint {
-    u << 1
+    const MASK: CarrierUint = CarrierUint::MAX;
+    (u << 1) & MASK
 }
 
 const fn is_nonzero(u: CarrierUint) -> bool {
@@ -233,15 +235,189 @@ const _: () = {
     assert!(max_k <= cache::MAX_K);
 };
 
+struct ComputeMulResult {
+    integer_part: CarrierUint,
+    is_integer: bool,
+}
+
+fn compute_mul(u: CarrierUint, cache: &cache::EntryType) -> ComputeMulResult {
+    let r = wuint::umul192_upper128(u, *cache);
+    ComputeMulResult {
+        integer_part: r.high(),
+        is_integer: r.low() == 0,
+    }
+}
+
+fn compute_delta(cache: &cache::EntryType, beta: i32) -> u32 {
+    (cache.high() >> ((CARRIER_BITS - 1) as i32 - beta)) as u32
+}
+
+struct ComputeMulParityResult {
+    parity: bool,
+    is_integer: bool,
+}
+
+fn compute_mul_parity(
+    two_f: CarrierUint,
+    cache: &cache::EntryType,
+    beta: i32,
+) -> ComputeMulParityResult {
+    debug_assert!(beta >= 1);
+    debug_assert!(beta < 64);
+
+    let r = wuint::umul192_lower128(two_f, *cache);
+    ComputeMulParityResult {
+        parity: ((r.high() >> (64 - beta)) & 1) != 0,
+        is_integer: ((r.high() << beta) | (r.low() >> (64 - beta))) == 0,
+    }
+}
+
+fn compute_left_endpoint_for_shorter_interval_case(
+    cache: &cache::EntryType,
+    beta: i32,
+) -> CarrierUint {
+    (cache.high() - (cache.high() >> (SIGNIFICAND_BITS + 2)))
+        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta)
+}
+
+fn compute_right_endpoint_for_shorter_interval_case(
+    cache: &cache::EntryType,
+    beta: i32,
+) -> CarrierUint {
+    (cache.high() + (cache.high() >> (SIGNIFICAND_BITS + 2)))
+        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta)
+}
+
+fn compute_round_up_for_shorter_interval_case(cache: &cache::EntryType, beta: i32) -> CarrierUint {
+    (cache.high() >> ((CARRIER_BITS - SIGNIFICAND_BITS - 2) as i32 - beta)).div_ceil(2)
+}
+
+const fn floor_log2(mut n: u64) -> i32 {
+    let mut count = -1;
+    while n != 0 {
+        count += 1;
+        n >>= 1;
+    }
+    count
+}
+
+fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
+    const CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD: i32 = 2;
+    const CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD: i32 = 2 + floor_log2(
+        compute_power64::<
+            {
+                count_factors::<5>((((1 as CarrierUint) << (SIGNIFICAND_BITS + 2)) - 1) as usize)
+                    + 1
+            },
+        >(10)
+            / 3,
+    );
+    (CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD
+        ..=CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD)
+        .contains(&exponent)
+}
+
 // The main algorithm assumes the input is a normal/subnormal finite number.
-fn compute_nearest_normal(
-    two_fc: CarrierUint,
-    binary_exponent: i32,
-    has_even_significand_bits: bool,
-) -> Decimal {
+fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: u32) -> Decimal {
+    let mut two_fc = remove_sign_bit_and_shift(signed_significand_bits);
+    let mut binary_exponent = exponent_bits as i32;
+
+    // Is the input a normal number?
+    if binary_exponent != 0 {
+        binary_exponent += EXPONENT_BIAS - SIGNIFICAND_BITS as i32;
+
+        // Shorter interval case; proceed like Schubfach. One might think this
+        // condition is wrong, since when exponent_bits == 1 and two_fc == 0,
+        // the interval is actually regular. However, it turns out that this
+        // seemingly wrong condition is actually fine, because the end result is
+        // anyway the same.
+        //
+        // [binary32]
+        // (fc-1/2) * 2^e = 1.175'494'28... * 10^-38
+        // (fc-1/4) * 2^e = 1.175'494'31... * 10^-38
+        //    fc    * 2^e = 1.175'494'35... * 10^-38
+        // (fc+1/2) * 2^e = 1.175'494'42... * 10^-38
+        //
+        // Hence, shorter_interval_case will return 1.175'494'4 * 10^-38.
+        // 1.175'494'3 * 10^-38 is also a correct shortest representation that
+        // will be rejected if we assume shorter interval, but 1.175'494'4 *
+        // 10^-38 is closer to the true value so it doesn't matter.
+        //
+        // [binary64]
+        // (fc-1/2) * 2^e = 2.225'073'858'507'201'13... * 10^-308
+        // (fc-1/4) * 2^e = 2.225'073'858'507'201'25... * 10^-308
+        //    fc    * 2^e = 2.225'073'858'507'201'38... * 10^-308
+        // (fc+1/2) * 2^e = 2.225'073'858'507'201'63... * 10^-308
+        //
+        // Hence, shorter_interval_case will return 2.225'073'858'507'201'4 * 10^-308.
+        // This is indeed of the shortest length, and it is the unique one
+        // closest to the true value among valid representations of the same
+        // length.
+
+        // Shorter interval case.
+        if two_fc == 0 {
+            // Compute k and beta.
+            let minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
+            let beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+
+            // Compute xi and zi.
+            let cache = unsafe { cache::get(-minus_k) };
+
+            let mut xi = compute_left_endpoint_for_shorter_interval_case(&cache, beta);
+            let zi = compute_right_endpoint_for_shorter_interval_case(&cache, beta);
+
+            // If the left endpoint is not an integer, increase it.
+            if !is_left_endpoint_integer_shorter_interval(binary_exponent) {
+                xi += 1;
+            }
+
+            // Try bigger divisor.
+            let mut decimal_significand = zi / 10;
+
+            // If succeed, remove trailing zeros if necessary and return.
+            if decimal_significand * 10 >= xi {
+                return Decimal {
+                    significand: decimal_significand,
+                    exponent: minus_k + 1,
+                };
+            }
+
+            // Otherwise, compute the round-up of y.
+            decimal_significand = compute_round_up_for_shorter_interval_case(&cache, beta);
+
+            // When tie occurs, choose one of them according to the rule.
+            const SHORTER_INTERVAL_TIE_LOWER_THRESHOLD: i32 =
+                -log::floor_log5_pow2_minus_log5_3(SIGNIFICAND_BITS as i32 + 4)
+                    - 2
+                    - SIGNIFICAND_BITS as i32;
+            const SHORTER_INTERVAL_TIE_UPPER_THRESHOLD: i32 =
+                -log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2) - 2 - SIGNIFICAND_BITS as i32;
+            if policy::prefer_round_down(decimal_significand)
+                && binary_exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
+                && binary_exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
+            {
+                decimal_significand -= 1;
+            } else if decimal_significand < xi {
+                decimal_significand += 1;
+            }
+            return Decimal {
+                significand: decimal_significand,
+                exponent: minus_k,
+            };
+        }
+
+        two_fc |= 1 << (SIGNIFICAND_BITS + 1);
+    }
+    // Is the input a subnormal number?
+    else {
+        binary_exponent = MIN_EXPONENT - SIGNIFICAND_BITS as i32;
+    }
+
     //////////////////////////////////////////////////////////////////////
     // Step 1: Schubfach multiplier calculation.
     //////////////////////////////////////////////////////////////////////
+
+    let has_even_significand_bits = has_even_significand_bits(signed_significand_bits);
 
     // Compute k and beta.
     let minus_k = log::floor_log10_pow2(binary_exponent) - KAPPA as i32;
@@ -344,192 +520,10 @@ fn compute_nearest_normal(
     }
 }
 
-fn compute_nearest_shorter(binary_exponent: i32) -> Decimal {
-    // Compute k and beta.
-    let minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
-    let beta = binary_exponent + log::floor_log2_pow10(-minus_k);
-
-    // Compute xi and zi.
-    let cache = unsafe { cache::get(-minus_k) };
-
-    let mut xi = compute_left_endpoint_for_shorter_interval_case(&cache, beta);
-    let zi = compute_right_endpoint_for_shorter_interval_case(&cache, beta);
-
-    // If the left endpoint is not an integer, increase it.
-    if !is_left_endpoint_integer_shorter_interval(binary_exponent) {
-        xi += 1;
-    }
-
-    // Try bigger divisor.
-    let mut decimal_significand = zi / 10;
-
-    // If succeed, remove trailing zeros if necessary and return.
-    if decimal_significand * 10 >= xi {
-        return Decimal {
-            significand: decimal_significand,
-            exponent: minus_k + 1,
-        };
-    }
-
-    // Otherwise, compute the round-up of y.
-    decimal_significand = compute_round_up_for_shorter_interval_case(&cache, beta);
-
-    // When tie occurs, choose one of them according to the rule.
-    const SHORTER_INTERVAL_TIE_LOWER_THRESHOLD: i32 =
-        -log::floor_log5_pow2_minus_log5_3(SIGNIFICAND_BITS as i32 + 4)
-            - 2
-            - SIGNIFICAND_BITS as i32;
-    const SHORTER_INTERVAL_TIE_UPPER_THRESHOLD: i32 =
-        -log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2) - 2 - SIGNIFICAND_BITS as i32;
-    if policy::prefer_round_down(decimal_significand)
-        && binary_exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
-        && binary_exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
-    {
-        decimal_significand -= 1;
-    } else if decimal_significand < xi {
-        decimal_significand += 1;
-    }
-    Decimal {
-        significand: decimal_significand,
-        exponent: minus_k,
-    }
-}
-
-struct ComputeMulResult {
-    integer_part: CarrierUint,
-    is_integer: bool,
-}
-
-fn compute_mul(u: CarrierUint, cache: &cache::EntryType) -> ComputeMulResult {
-    let r = wuint::umul192_upper128(u, *cache);
-    ComputeMulResult {
-        integer_part: r.high(),
-        is_integer: r.low() == 0,
-    }
-}
-
-fn compute_delta(cache: &cache::EntryType, beta: i32) -> u32 {
-    (cache.high() >> ((CARRIER_BITS - 1) as i32 - beta)) as u32
-}
-
-struct ComputeMulParityResult {
-    parity: bool,
-    is_integer: bool,
-}
-
-fn compute_mul_parity(
-    two_f: CarrierUint,
-    cache: &cache::EntryType,
-    beta: i32,
-) -> ComputeMulParityResult {
-    debug_assert!(beta >= 1);
-    debug_assert!(beta < 64);
-
-    let r = wuint::umul192_lower128(two_f, *cache);
-    ComputeMulParityResult {
-        parity: ((r.high() >> (64 - beta)) & 1) != 0,
-        is_integer: ((r.high() << beta) | (r.low() >> (64 - beta))) == 0,
-    }
-}
-
-fn compute_left_endpoint_for_shorter_interval_case(
-    cache: &cache::EntryType,
-    beta: i32,
-) -> CarrierUint {
-    (cache.high() - (cache.high() >> (SIGNIFICAND_BITS + 2)))
-        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta)
-}
-
-fn compute_right_endpoint_for_shorter_interval_case(
-    cache: &cache::EntryType,
-    beta: i32,
-) -> CarrierUint {
-    (cache.high() + (cache.high() >> (SIGNIFICAND_BITS + 2)))
-        >> ((CARRIER_BITS - SIGNIFICAND_BITS - 1) as i32 - beta)
-}
-
-fn compute_round_up_for_shorter_interval_case(cache: &cache::EntryType, beta: i32) -> CarrierUint {
-    (cache.high() >> ((CARRIER_BITS - SIGNIFICAND_BITS - 2) as i32 - beta)).div_ceil(2)
-}
-
-const fn floor_log2(mut n: u64) -> i32 {
-    let mut count = -1;
-    while n != 0 {
-        count += 1;
-        n >>= 1;
-    }
-    count
-}
-
-fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
-    const CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD: i32 = 2;
-    const CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD: i32 = 2 + floor_log2(
-        compute_power64::<
-            {
-                count_factors::<5>((((1 as CarrierUint) << (SIGNIFICAND_BITS + 2)) - 1) as usize)
-                    + 1
-            },
-        >(10)
-            / 3,
-    );
-    (CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_LOWER_THRESHOLD
-        ..=CASE_SHORTER_INTERVAL_LEFT_ENDPOINT_UPPER_THRESHOLD)
-        .contains(&exponent)
-}
-
 fn to_decimal(x: f64) -> Decimal {
     let br = x.to_bits();
     let exponent_bits = extract_exponent_bits(br);
-    let signed_significand_bits = remove_exponent_bits(br, exponent_bits);
+    let s = remove_exponent_bits(br);
 
-    let mut two_fc = remove_sign_bit_and_shift(signed_significand_bits);
-    let mut exponent = exponent_bits as i32;
-
-    // Is the input a normal number?
-    if exponent != 0 {
-        exponent += EXPONENT_BIAS - SIGNIFICAND_BITS as i32;
-
-        // Shorter interval case; proceed like Schubfach. One might think this
-        // condition is wrong, since when exponent_bits == 1 and two_fc == 0,
-        // the interval is actually regular. However, it turns out that this
-        // seemingly wrong condition is actually fine, because the end result is
-        // anyway the same.
-        //
-        // [binary32]
-        // (fc-1/2) * 2^e = 1.175'494'28... * 10^-38
-        // (fc-1/4) * 2^e = 1.175'494'31... * 10^-38
-        //    fc    * 2^e = 1.175'494'35... * 10^-38
-        // (fc+1/2) * 2^e = 1.175'494'42... * 10^-38
-        //
-        // Hence, shorter_interval_case will return 1.175'494'4 * 10^-38.
-        // 1.175'494'3 * 10^-38 is also a correct shortest representation that
-        // will be rejected if we assume shorter interval, but 1.175'494'4 *
-        // 10^-38 is closer to the true value so it doesn't matter.
-        //
-        // [binary64]
-        // (fc-1/2) * 2^e = 2.225'073'858'507'201'13... * 10^-308
-        // (fc-1/4) * 2^e = 2.225'073'858'507'201'25... * 10^-308
-        //    fc    * 2^e = 2.225'073'858'507'201'38... * 10^-308
-        // (fc+1/2) * 2^e = 2.225'073'858'507'201'63... * 10^-308
-        //
-        // Hence, shorter_interval_case will return 2.225'073'858'507'201'4 * 10^-308.
-        // This is indeed of the shortest length, and it is the unique one
-        // closest to the true value among valid representations of the same
-        // length.
-        if two_fc == 0 {
-            return compute_nearest_shorter(exponent);
-        }
-
-        two_fc |= 1 << (SIGNIFICAND_BITS + 1);
-    }
-    // Is the input a subnormal number?
-    else {
-        exponent = MIN_EXPONENT - SIGNIFICAND_BITS as i32;
-    }
-
-    compute_nearest_normal(
-        two_fc,
-        exponent,
-        has_even_significand_bits(signed_significand_bits as CarrierUint),
-    )
+    compute_nearest(s, exponent_bits)
 }

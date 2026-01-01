@@ -25,8 +25,7 @@ pub(crate) const MAX_OUTPUT_STRING_LENGTH: usize = 1 + 17 + 1 + 1 + 1 + 3;
 
 pub(crate) unsafe fn to_chars(x: f64, mut buffer: *mut u8) -> *mut u8 {
     let br = x.to_bits();
-    let exponent_bits = crate::extract_exponent_bits(br);
-    let s = crate::remove_exponent_bits(br, exponent_bits);
+    let s = crate::remove_exponent_bits(br);
 
     if crate::is_negative(s) {
         *buffer = b'-';
