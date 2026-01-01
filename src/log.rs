@@ -22,7 +22,10 @@
 // Utilities for fast/constexpr log computation.
 ////////////////////////////////////////////////////////////////////////////////////////
 
-const _: () = assert!((-1 >> 1) == -1); // right-shift for signed integers must be arithmetic
+const _: () = assert!(
+    (-1 >> 1) == -1,
+    "right-shift for signed integers must be arithmetic",
+);
 
 // Compute floor((e * m - f) >> k) for given e.
 type Multiply = u32;
