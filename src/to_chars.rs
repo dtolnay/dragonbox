@@ -37,7 +37,9 @@ pub(crate) unsafe fn to_chars(x: f64, mut buffer: *mut u8) -> *mut u8 {
         let result = crate::to_decimal(x);
         to_chars_detail(result.significand, result.exponent, buffer)
     } else {
-        ptr::copy_nonoverlapping(b"0E0".as_ptr(), buffer, 3);
+        *buffer = b'0';
+        *buffer.add(1) = b'E';
+        *buffer.add(2) = b'0';
         buffer.add(3)
     }
 }
