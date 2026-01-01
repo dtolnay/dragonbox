@@ -67,7 +67,8 @@
     clippy::never_loop,
     clippy::similar_names,
     clippy::too_many_lines,
-    clippy::unreadable_literal
+    clippy::unreadable_literal,
+    clippy::verbose_bit_mask
 )]
 
 mod buffer;
