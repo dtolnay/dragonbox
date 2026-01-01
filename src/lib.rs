@@ -193,7 +193,8 @@ struct Decimal {
     exponent: i32,
 }
 
-const KAPPA: u32 = 2;
+const KAPPA: u32 =
+    (log::floor_log10_pow2(CARRIER_BITS as i32 - SIGNIFICAND_BITS as i32 - 2) - 1) as u32;
 const _: () = assert!(
     CARRIER_BITS as i32 >= SIGNIFICAND_BITS as i32 + 2 + log::floor_log2_pow10(KAPPA as i32 + 1),
 );
