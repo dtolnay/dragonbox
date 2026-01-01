@@ -270,16 +270,16 @@ fn compute_nearest_normal(
     >(zi);
     let mut r = (zi - u64::from(BIG_DIVISOR) * ret_value.significand) as u32;
 
-    'small_divisor_case_label: loop {
+    loop {
         if r < deltai {
             // Exclude the right endpoint if necessary.
             if r == 0 && (is_z_integer & !has_even_significand_bits) {
                 ret_value.significand -= 1;
                 r = BIG_DIVISOR;
-                break 'small_divisor_case_label;
+                break;
             }
         } else if r > deltai {
-            break 'small_divisor_case_label;
+            break;
         } else {
             // r == deltai; compare fractional parts.
             let ComputeMulParityResult {
@@ -288,7 +288,7 @@ fn compute_nearest_normal(
             } = compute_mul_parity(two_fc - 1, &cache, beta);
 
             if !(xi_parity | (x_is_integer & has_even_significand_bits)) {
-                break 'small_divisor_case_label;
+                break;
             }
         }
         ret_value.exponent = minus_k + KAPPA as i32 + 1;
