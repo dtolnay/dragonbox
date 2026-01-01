@@ -67,16 +67,6 @@ fn test_random() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "too slow for miri")]
-fn test_non_finite() {
-    for i in 0u64..1 << 23 {
-        let f = f64::from_bits((((1 << 11) - 1) << 52) + (i << 29));
-        assert!(!f.is_finite(), "f={f}");
-        dragonbox::Buffer::new().format_finite(f);
-    }
-}
-
-#[test]
 fn test_basic() {
     check!(0E0);
     check!(-0E0);

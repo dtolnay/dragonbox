@@ -121,11 +121,14 @@ type CarrierUint = u64;
 // Number of bits in the above unsigned integer type.
 const CARRIER_BITS: usize = 64;
 
+// Specifies the signed integer type to hold the exponent of Float.
+type ExponentInt = i32;
+
 // Extract exponent bits from a bit pattern. The result must be aligned to the
 // LSB so that there is no additional zero paddings on the right. This function
 // does not do bias adjustment.
-const fn extract_exponent_bits(u: CarrierUint) -> u32 {
-    (u >> SIGNIFICAND_BITS) as u32 & ((1 << EXPONENT_BITS) - 1)
+const fn extract_exponent_bits(u: CarrierUint) -> ExponentInt {
+    (u >> SIGNIFICAND_BITS) as ExponentInt & (((1 as ExponentInt) << EXPONENT_BITS) - 1)
 }
 
 // Remove the exponent bits and extract significand bits together with the sign
@@ -141,7 +144,7 @@ const fn remove_sign_bit_and_shift(u: CarrierUint) -> CarrierUint {
 }
 
 const fn is_nonzero(u: CarrierUint) -> bool {
-    (u << 1) != 0
+    (u & ((1 << (SIGNIFICAND_BITS + EXPONENT_BITS)) - 1)) != 0
 }
 
 const fn is_positive(u: CarrierUint) -> bool {
@@ -193,10 +196,19 @@ struct Decimal {
     exponent: i32,
 }
 
-const KAPPA: u32 =
-    (log::floor_log10_pow2(CARRIER_BITS as i32 - SIGNIFICAND_BITS as i32 - 2) - 1) as u32;
+const KAPPA: u32 = (log::floor_log10_pow2::<
+    { log::FLOOR_LOG10_POW2_MIN_EXPONENT },
+    { log::FLOOR_LOG10_POW2_MAX_EXPONENT },
+>(CARRIER_BITS as i32 - SIGNIFICAND_BITS as i32 - 2)
+    - 1) as u32;
 const _: () = assert!(
-    CARRIER_BITS as i32 >= SIGNIFICAND_BITS as i32 + 2 + log::floor_log2_pow10(KAPPA as i32 + 1),
+    CARRIER_BITS as i32
+        >= SIGNIFICAND_BITS as i32
+            + 2
+            + log::floor_log2_pow10::<
+                { log::FLOOR_LOG2_POW10_MIN_EXPONENT },
+                { log::FLOOR_LOG2_POW10_MAX_EXPONENT },
+            >(KAPPA as i32 + 1),
 );
 
 const fn min(x: i32, y: i32) -> i32 {
@@ -215,25 +227,33 @@ const fn max(x: i32, y: i32) -> i32 {
     }
 }
 
-const _: () = {
-    let min_k = min(
-        -log::floor_log10_pow2_minus_log10_4_over_3(MAX_EXPONENT - SIGNIFICAND_BITS as i32),
-        -log::floor_log10_pow2(MAX_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32,
-    );
-    assert!(min_k >= cache::MIN_K);
-};
+const MIN_K: i32 = min(
+    -log::floor_log10_pow2_minus_log10_4_over_3::<
+        { log::FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MIN_EXPONENT },
+        { log::FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MAX_EXPONENT },
+    >(MAX_EXPONENT - SIGNIFICAND_BITS as i32),
+    -log::floor_log10_pow2::<
+        { log::FLOOR_LOG10_POW2_MIN_EXPONENT },
+        { log::FLOOR_LOG10_POW2_MAX_EXPONENT },
+    >(MAX_EXPONENT - SIGNIFICAND_BITS as i32)
+        + KAPPA as i32,
+);
+const _: () = assert!(MIN_K >= cache::MIN_K);
 
 // We do invoke shorter_interval_case for exponent == min_exponent case, so we
 // should not add 1 here.
-const _: () = {
-    let max_k = max(
-        -log::floor_log10_pow2_minus_log10_4_over_3(
-            (MIN_EXPONENT - SIGNIFICAND_BITS as i32/* + 1*/),
-        ),
-        -log::floor_log10_pow2(MIN_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32,
-    );
-    assert!(max_k <= cache::MAX_K);
-};
+const MAX_K: i32 = max(
+    -log::floor_log10_pow2_minus_log10_4_over_3::<
+        { log::FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MIN_EXPONENT },
+        { log::FLOOR_LOG10_POW2_MINUS_LOG10_4_OVER_3_MAX_EXPONENT },
+    >(MIN_EXPONENT - SIGNIFICAND_BITS as i32 /* + 1*/),
+    -log::floor_log10_pow2::<
+        { log::FLOOR_LOG10_POW2_MIN_EXPONENT },
+        { log::FLOOR_LOG10_POW2_MAX_EXPONENT },
+    >(MIN_EXPONENT - SIGNIFICAND_BITS as i32)
+        + KAPPA as i32,
+);
+const _: () = assert!(MAX_K <= cache::MAX_K);
 
 struct ComputeMulResult {
     integer_part: CarrierUint,
@@ -318,9 +338,9 @@ fn is_left_endpoint_integer_shorter_interval(exponent: i32) -> bool {
 }
 
 // The main algorithm assumes the input is a normal/subnormal finite number.
-fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: u32) -> Decimal {
+fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: ExponentInt) -> Decimal {
     let mut two_fc = remove_sign_bit_and_shift(signed_significand_bits);
-    let mut binary_exponent = exponent_bits as i32;
+    let mut binary_exponent = exponent_bits;
 
     // Is the input a normal number?
     if binary_exponent != 0 {
@@ -357,8 +377,11 @@ fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: u32) -> 
         // Shorter interval case.
         if two_fc == 0 {
             // Compute k and beta.
-            let minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
-            let beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+            let minus_k = log::floor_log10_pow2_minus_log10_4_over_3::<
+                { MIN_EXPONENT - SIGNIFICAND_BITS as i32 },
+                { MAX_EXPONENT - SIGNIFICAND_BITS as i32 },
+            >(binary_exponent);
+            let beta = binary_exponent + log::floor_log2_pow10::<MIN_K, MAX_K>(-minus_k);
 
             // Compute xi and zi.
             let cache = unsafe { cache::get(-minus_k) };
@@ -427,9 +450,13 @@ fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: u32) -> 
     let has_even_significand_bits = has_even_significand_bits(signed_significand_bits);
 
     // Compute k and beta.
-    let minus_k = log::floor_log10_pow2(binary_exponent) - KAPPA as i32;
+    let minus_k = log::floor_log10_pow2::<
+        { MIN_EXPONENT - SIGNIFICAND_BITS as i32 },
+        { MAX_EXPONENT - SIGNIFICAND_BITS as i32 },
+    >(binary_exponent)
+        - KAPPA as i32;
     let cache = unsafe { cache::get(-minus_k) };
-    let beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+    let beta = binary_exponent + log::floor_log2_pow10::<MIN_K, MAX_K>(-minus_k);
 
     // Compute zi and deltai.
     // 10^kappa <= deltai < 10^(kappa + 1)
