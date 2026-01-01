@@ -519,6 +519,8 @@ fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: Exponent
 
     decimal_significand *= 10;
 
+    // delta is equal to 10^(kappa + elog10(2) - floor(elog10(2))), so dist
+    // cannot be larger than r.
     let mut dist = r - (deltai / 2) + (SMALL_DIVISOR / 2);
     let approx_y_parity = ((dist ^ (SMALL_DIVISOR / 2)) & 1) != 0;
 

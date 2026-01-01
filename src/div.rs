@@ -33,15 +33,12 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
         const SHIFT_AMOUNT: i32 = 16;
     }
 
-    *n *= Info::MAGIC_NUMBER;
+    let prod = *n * Info::MAGIC_NUMBER;
 
-    const {
-        assert!(Info::SHIFT_AMOUNT < 32);
-    }
     const MASK: u32 = (1 << Info::SHIFT_AMOUNT) - 1;
-    let result = (*n & MASK) < Info::MAGIC_NUMBER;
+    let result = (prod & MASK) < Info::MAGIC_NUMBER;
 
-    *n >>= Info::SHIFT_AMOUNT;
+    *n = prod >> Info::SHIFT_AMOUNT;
     result
 }
 
