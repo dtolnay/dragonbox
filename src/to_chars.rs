@@ -90,17 +90,6 @@ static RADIX_100_HEAD_TABLE: [u8; 200] = [
 
 unsafe fn print_1_digit(n: u32, buffer: *mut u8) {
     const {
-        assert!(
-            b'1' == b'0' + 1
-                && b'2' == b'0' + 2
-                && b'3' == b'0' + 3
-                && b'4' == b'0' + 4
-                && b'5' == b'0' + 5
-                && b'6' == b'0' + 6
-                && b'7' == b'0' + 7
-                && b'8' == b'0' + 8
-                && b'9' == b'0' + 9
-        );
         assert!((b'0' & 0xf) == 0);
     }
     *buffer = b'0' | n as u8;
