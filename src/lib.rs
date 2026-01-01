@@ -371,7 +371,14 @@ fn compute_nearest(signed_significand_bits: CarrierUint, exponent_bits: u32) -> 
             }
 
             // Try bigger divisor.
-            let mut decimal_significand = zi / 10;
+            // zi is at most floor((f_c + 1/2) * 2^e * 10^k0).
+            // Substituting f_c = 2^p and k0 = -floor(log10(3 * 2^(e-2))), we get
+            // zi <= floor((2^(p+1) + 1) * 20/3) <= ceil((2^(p+1) + 1)/3) * 20.
+            // This computation does not overflow for any of the formats I care about.
+            let mut decimal_significand = div::divide_by_pow10::<
+                1,
+                { ((((1 << (SIGNIFICAND_BITS + 1)) + 1) / 3) + 1) * 20 },
+            >(zi);
 
             // If succeed, remove trailing zeros if necessary and return.
             if decimal_significand * 10 >= xi {

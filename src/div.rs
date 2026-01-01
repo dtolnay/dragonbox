@@ -48,12 +48,18 @@ pub(crate) fn check_divisibility_and_divide_by_pow10(n: &mut u32) -> bool {
 // Compute floor(n / 10^N) for small N.
 // Precondition: n <= n_max
 pub(crate) fn divide_by_pow10<const N: u32, const N_MAX: u64>(n: u64) -> u64 {
-    // Specialize for 64-bit division by 1000.
-    // Ensure that the correctness condition is met.
-    if N == 3 && N_MAX <= 15534100272597517998 {
-        wuint::umul128_upper64(n, 2361183241434822607) >> 7
-    } else {
-        let divisor = const { crate::compute_power64::<N>(10) };
-        n / divisor
+    // Specialize for 64-bit division by 10.
+    // Without the bound on n_max (which compilers these days never leverage),
+    // the minimum needed amount of shift is larger than 64.
+    if N == 1 && N_MAX <= 4611686018427387908 {
+        return wuint::umul128_upper64(n, 1844674407370955162);
     }
+    // Specialize for 64-bit division by 1000.
+    // Without the bound on n_max (which compilers these days never leverage),
+    // the smallest magic number for this computation does not fit into 64-bits.
+    if N == 3 && N_MAX <= 15534100272597517998 {
+        return wuint::umul128_upper64(n, 2361183241434822607) >> 7;
+    }
+    let divisor = const { crate::compute_power64::<N>(10) };
+    n / divisor
 }
