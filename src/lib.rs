@@ -220,22 +220,17 @@ const _: () = {
 // The main algorithm assumes the input is a normal/subnormal finite number
 fn compute_nearest_normal(
     two_fc: CarrierUint,
-    exponent: i32,
+    binary_exponent: i32,
     has_even_significand_bits: bool,
 ) -> Decimal {
     //////////////////////////////////////////////////////////////////////
     // Step 1: Schubfach multiplier calculation
     //////////////////////////////////////////////////////////////////////
 
-    let mut ret_value = Decimal {
-        significand: 0,
-        exponent: 0,
-    };
-
     // Compute k and beta.
-    let minus_k = log::floor_log10_pow2(exponent) - KAPPA as i32;
+    let minus_k = log::floor_log10_pow2(binary_exponent) - KAPPA as i32;
     let cache = unsafe { cache::get(-minus_k) };
-    let beta = exponent + log::floor_log2_pow10(-minus_k);
+    let beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
     // Compute zi and deltai.
     // 10^kappa <= deltai < 10^(kappa + 1)
@@ -264,17 +259,17 @@ fn compute_nearest_normal(
 
     // Using an upper bound on zi, we might be able to optimize the division
     // better than the compiler; we are computing zi / big_divisor here.
-    ret_value.significand = div::divide_by_pow10::<
+    let mut decimal_significand = div::divide_by_pow10::<
         { KAPPA + 1 },
         { (1 << (SIGNIFICAND_BITS + 1)) * BIG_DIVISOR as u64 - 1 },
     >(zi);
-    let mut r = (zi - u64::from(BIG_DIVISOR) * ret_value.significand) as u32;
+    let mut r = (zi - u64::from(BIG_DIVISOR) * decimal_significand) as u32;
 
     loop {
         if r < deltai {
             // Exclude the right endpoint if necessary.
             if r == 0 && (is_z_integer & !has_even_significand_bits) {
-                ret_value.significand -= 1;
+                decimal_significand -= 1;
                 r = BIG_DIVISOR;
                 break;
             }
@@ -291,17 +286,18 @@ fn compute_nearest_normal(
                 break;
             }
         }
-        ret_value.exponent = minus_k + KAPPA as i32 + 1;
 
-        return ret_value;
+        return Decimal {
+            significand: decimal_significand,
+            exponent: minus_k + KAPPA as i32 + 1,
+        };
     }
 
     //////////////////////////////////////////////////////////////////////
     // Step 3: Find the significand with the smaller divisor
     //////////////////////////////////////////////////////////////////////
 
-    ret_value.significand *= 10;
-    ret_value.exponent = minus_k + KAPPA as i32;
+    decimal_significand *= 10;
 
     let mut dist = r - (deltai / 2) + (SMALL_DIVISOR / 2);
     let approx_y_parity = ((dist ^ (SMALL_DIVISOR / 2)) & 1) != 0;
@@ -310,7 +306,7 @@ fn compute_nearest_normal(
     let divisible_by_small_divisor = div::check_divisibility_and_divide_by_pow10(&mut dist);
 
     // Add dist / 10^kappa to the significand.
-    ret_value.significand += CarrierUint::from(dist);
+    decimal_significand += CarrierUint::from(dist);
 
     if divisible_by_small_divisor {
         // Check z^(f) >= epsilon^(f).
@@ -324,29 +320,27 @@ fn compute_nearest_normal(
             is_integer: is_y_integer,
         } = compute_mul_parity(two_fc, &cache, beta);
         if yi_parity != approx_y_parity {
-            ret_value.significand -= 1;
+            decimal_significand -= 1;
         } else {
             // If z^(f) >= epsilon^(f), we might have a tie
             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
             // For tie-to-up case, we can just choose the upper one.
-            if policy::prefer_round_down(&ret_value) & is_y_integer {
-                ret_value.significand -= 1;
+            if policy::prefer_round_down(decimal_significand) & is_y_integer {
+                decimal_significand -= 1;
             }
         }
     }
 
-    ret_value
+    Decimal {
+        significand: decimal_significand,
+        exponent: minus_k + KAPPA as i32,
+    }
 }
 
-fn compute_nearest_shorter(exponent: i32) -> Decimal {
-    let mut ret_value = Decimal {
-        significand: 0,
-        exponent: 0,
-    };
-
+fn compute_nearest_shorter(binary_exponent: i32) -> Decimal {
     // Compute k and beta.
-    let minus_k = log::floor_log10_pow2_minus_log10_4_over_3(exponent);
-    let beta = exponent + log::floor_log2_pow10(-minus_k);
+    let minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
+    let beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
     // Compute xi and zi.
     let cache = unsafe { cache::get(-minus_k) };
@@ -355,22 +349,23 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
     let zi = compute_right_endpoint_for_shorter_interval_case(&cache, beta);
 
     // If the left endpoint is not an integer, increase it.
-    if !is_left_endpoint_integer_shorter_interval(exponent) {
+    if !is_left_endpoint_integer_shorter_interval(binary_exponent) {
         xi += 1;
     }
 
     // Try bigger divisor.
-    ret_value.significand = zi / 10;
+    let mut decimal_significand = zi / 10;
 
     // If succeed, remove trailing zeros if necessary and return.
-    if ret_value.significand * 10 >= xi {
-        ret_value.exponent = minus_k + 1;
-        return ret_value;
+    if decimal_significand * 10 >= xi {
+        return Decimal {
+            significand: decimal_significand,
+            exponent: minus_k + 1,
+        };
     }
 
     // Otherwise, compute the round-up of y.
-    ret_value.significand = compute_round_up_for_shorter_interval_case(&cache, beta);
-    ret_value.exponent = minus_k;
+    decimal_significand = compute_round_up_for_shorter_interval_case(&cache, beta);
 
     // When tie occurs, choose one of them according to the rule.
     const SHORTER_INTERVAL_TIE_LOWER_THRESHOLD: i32 =
@@ -379,15 +374,18 @@ fn compute_nearest_shorter(exponent: i32) -> Decimal {
             - SIGNIFICAND_BITS as i32;
     const SHORTER_INTERVAL_TIE_UPPER_THRESHOLD: i32 =
         -log::floor_log5_pow2(SIGNIFICAND_BITS as i32 + 2) - 2 - SIGNIFICAND_BITS as i32;
-    if policy::prefer_round_down(&ret_value)
-        && exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
-        && exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
+    if policy::prefer_round_down(decimal_significand)
+        && binary_exponent >= SHORTER_INTERVAL_TIE_LOWER_THRESHOLD
+        && binary_exponent <= SHORTER_INTERVAL_TIE_UPPER_THRESHOLD
     {
-        ret_value.significand -= 1;
-    } else if ret_value.significand < xi {
-        ret_value.significand += 1;
+        decimal_significand -= 1;
+    } else if decimal_significand < xi {
+        decimal_significand += 1;
     }
-    ret_value
+    Decimal {
+        significand: decimal_significand,
+        exponent: minus_k,
+    }
 }
 
 struct ComputeMulResult {

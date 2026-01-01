@@ -18,8 +18,8 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-use crate::Decimal;
+use crate::CarrierUint;
 
-pub(crate) fn prefer_round_down(r: &Decimal) -> bool {
-    r.significand % 2 != 0
+pub(crate) fn prefer_round_down(significand: CarrierUint) -> bool {
+    significand % 2 != 0
 }
