@@ -41,7 +41,7 @@ impl EntryTypeExt for EntryType {
     }
 }
 
-static CACHE: [EntryType; 619] = [
+static CACHE: [EntryType; (MAX_K - MIN_K + 1) as usize] = [
     0xff77b1fcbebcdc4f_25e8e89c13bb0f7b,
     0x9faacf3df73609b1_77b191618c54e9ad,
     0xc795830d75038c1d_d59df5b9ef6a2418,
