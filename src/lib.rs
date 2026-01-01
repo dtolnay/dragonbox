@@ -197,21 +197,39 @@ const _: () = assert!(
     CARRIER_BITS as i32 >= SIGNIFICAND_BITS as i32 + 2 + log::floor_log2_pow10(KAPPA as i32 + 1),
 );
 
+const fn min(x: i32, y: i32) -> i32 {
+    if x < y {
+        x
+    } else {
+        y
+    }
+}
+
+const fn max(x: i32, y: i32) -> i32 {
+    if x > y {
+        x
+    } else {
+        y
+    }
+}
+
 const _: () = {
-    let a = -log::floor_log10_pow2_minus_log10_4_over_3(MAX_EXPONENT - SIGNIFICAND_BITS as i32);
-    let b = -log::floor_log10_pow2(MAX_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32;
-    let min_k = if a < b { a } else { b };
+    let min_k = min(
+        -log::floor_log10_pow2_minus_log10_4_over_3(MAX_EXPONENT - SIGNIFICAND_BITS as i32),
+        -log::floor_log10_pow2(MAX_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32,
+    );
     assert!(min_k >= cache::MIN_K);
 };
 
+// We do invoke shorter_interval_case for exponent == min_exponent case, so we
+// should not add 1 here.
 const _: () = {
-    // We do invoke shorter_interval_case for exponent == min_exponent case, so
-    // we should not add 1 here.
-    let a = -log::floor_log10_pow2_minus_log10_4_over_3(
-        (MIN_EXPONENT - SIGNIFICAND_BITS as i32/* + 1*/),
+    let max_k = max(
+        -log::floor_log10_pow2_minus_log10_4_over_3(
+            (MIN_EXPONENT - SIGNIFICAND_BITS as i32/* + 1*/),
+        ),
+        -log::floor_log10_pow2(MIN_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32,
     );
-    let b = -log::floor_log10_pow2(MIN_EXPONENT - SIGNIFICAND_BITS as i32) + KAPPA as i32;
-    let max_k = if a > b { a } else { b };
     assert!(max_k <= cache::MAX_K);
 };
 
