@@ -49,6 +49,7 @@
 #![no_std]
 #![doc(html_root_url = "https://docs.rs/dragonbox/0.1.10")]
 #![allow(unsafe_op_in_unsafe_fn, unused_parens)]
+#![cfg_attr(dragonbox_dead_code_workaround, allow(dead_code))]
 #![allow(
     clippy::assertions_on_constants,
     clippy::bool_to_int_with_if,
@@ -108,7 +109,6 @@ pub trait Float: Sealed {}
 const SIGNIFICAND_BITS: usize = 52;
 const EXPONENT_BITS: usize = 11;
 const MIN_EXPONENT: i32 = -1022;
-#[cfg_attr(dragonbox_dead_code_workaround, allow(dead_code))]
 const MAX_EXPONENT: i32 = 1023;
 const EXPONENT_BIAS: i32 = -1023;
 
