@@ -27,6 +27,15 @@ const _: () = assert!(
     "right-shift for signed integers must be arithmetic",
 );
 
+// Implementations of various log computations using binary approximations. On
+// less powerful platforms, using smaller integer types and magic numbers for
+// these computations significantly improve codegen, so depending on the range
+// of input we try to choose the smallest possible magic numbers that result in
+// the best codegen. To generically achieve that goal, we list multiple sets of
+// magic numbers with associated ranges of inputs, called "tiers", so that we
+// choose the smallest tier whose associated range covers the requested range of
+// input.
+
 trait TierInfo {
     const TIER: usize;
     const MULTIPLY: u32;
@@ -37,15 +46,27 @@ trait TierInfo {
     type Next: TierInfo;
 }
 
+// Check if the given tier covers the requested range. Info<current_tier> is
+// supposed to hold the magic numbers needed for the computation and the
+// supported range of input (i.e. the range of input where the computation with
+// the given magic numbers must be valid).
 const fn is_in_range<Info: TierInfo, const MIN_EXPONENT: i32, const MAX_EXPONENT: i32>() -> bool {
     MIN_EXPONENT >= Info::MIN_EXPONENT && MAX_EXPONENT <= Info::MAX_EXPONENT
 }
 
+// Generic implementation of log computations.
 const fn compute<Info: TierInfo, const MIN_EXPONENT: i32, const MAX_EXPONENT: i32>(e: i32) -> i32 {
     if is_in_range::<Info, MIN_EXPONENT, MAX_EXPONENT>() {
+        // Specialization for the case when the given tier covers the requested
+        // range of input. In this case, do the computation with the given magic
+        // numbers.
         debug_assert!(MIN_EXPONENT <= e && e <= MAX_EXPONENT);
         (e * Info::MULTIPLY as i32 - Info::SUBTRACT as i32) >> Info::SHIFT
     } else {
+        // Specialization for the case when the given tier does not cover the
+        // requested range of input. In this case, delegate the computation to
+        // the next tier. If the next tier does not exist, then the compilation
+        // must fail.
         debug_assert!(Info::TIER < Info::Next::TIER);
         compute::<Info::Next, MIN_EXPONENT, MAX_EXPONENT>(e)
     }
