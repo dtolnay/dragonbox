@@ -20,8 +20,9 @@
 
 use core::ptr;
 
-// sign(1) + significand(17) + decimal_point(1) + exp_marker(1) + exp_sign(1) + exp(3)
-pub(crate) const MAX_OUTPUT_STRING_LENGTH: usize = 1 + 17 + 1 + 1 + 1 + 3;
+// sign(1) + significand + decimal_point(1) + exp_marker(1) + exp_sign(1) + exp
+pub(crate) const MAX_OUTPUT_STRING_LENGTH: usize =
+    1 + crate::DECIMAL_SIGNIFICAND_DIGITS + 1 + 1 + 1 + crate::DECIMAL_EXPONENT_DIGITS;
 
 pub(crate) unsafe fn to_chars(x: f64, mut buffer: *mut u8) -> *mut u8 {
     let br = x.to_bits();

@@ -112,6 +112,8 @@ const EXPONENT_BITS: usize = 11;
 const MIN_EXPONENT: i32 = -1022;
 const MAX_EXPONENT: i32 = 1023;
 const EXPONENT_BIAS: i32 = -1023;
+const DECIMAL_SIGNIFICAND_DIGITS: usize = 17;
+const DECIMAL_EXPONENT_DIGITS: usize = 3;
 
 // Defines an unsigned integer type that is large enough
 // to carry a variable of type f64.
