@@ -24,7 +24,7 @@
 
 const _: () = assert!((-1 >> 1) == -1); // right-shift for signed integers must be arithmetic
 
-// Compute floor(e * c - s).
+// Compute floor((e * m - f) >> k) for given e.
 type Multiply = u32;
 type Subtract = u32;
 type Shift = usize;
