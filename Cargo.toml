@@ -13,7 +13,7 @@ repository = "https://github.com/dtolnay/dragonbox"
 rust-version = "1.79"
 
 [dev-dependencies]
-rand = "0.9"
+rand = "0.10"
 
 [target.'cfg(not(miri))'.dev-dependencies]
 criterion = { version = "0.8", default-features = false }
