@@ -32,8 +32,6 @@
 #[macro_use]
 mod macros;
 
-use std::f64;
-
 fn to_chars(f: f64) -> String {
     dragonbox::Buffer::new().format(f).to_owned()
 }
